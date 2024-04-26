@@ -1,0 +1,5 @@
+[build]
+filehash = false
+release = true
+dist = "noise-functions-demo"
+public_url = "/noise-functions-demo/"
