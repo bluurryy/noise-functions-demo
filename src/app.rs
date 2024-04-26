@@ -149,21 +149,15 @@ impl eframe::App for App {
                             });
                         ui.end_row();
 
-                        ui.label("Fractal");
-                        *changed |= ui
-                            .add(Reset::new(&mut config.fractal, DEFAULT_CONFIG.fractal))
-                            .changed();
-                        egui::ComboBox::from_id_source(1)
+                        ui.label("Dimension");
+                        *changed |= ui.add(Reset::new(dimension, DEFAULT_DIMENSION)).changed();
+                        egui::ComboBox::from_id_source(100)
                             .width(COMBO_BOX_WIDTH)
-                            .selected_text(config.fractal.to_str())
+                            .selected_text(dimension.to_str())
                             .show_ui(ui, |ui| {
-                                for &variant in Fractal::VARIANTS {
+                                for &variant in Dimension::VARIANTS {
                                     *changed |= ui
-                                        .selectable_value(
-                                            &mut config.fractal,
-                                            variant,
-                                            variant.to_str(),
-                                        )
+                                        .selectable_value(dimension, variant, variant.to_str())
                                         .changed();
                                 }
                             });
@@ -205,6 +199,31 @@ impl eframe::App for App {
                         *changed |= ui
                             .add(egui::DragValue::new(&mut config.jitter).speed(0.02))
                             .changed();
+                        ui.end_row();
+
+                        ui.separator();
+                        ui.separator();
+                        ui.separator();
+                        ui.end_row();
+
+                        ui.label("Fractal");
+                        *changed |= ui
+                            .add(Reset::new(&mut config.fractal, DEFAULT_CONFIG.fractal))
+                            .changed();
+                        egui::ComboBox::from_id_source(1)
+                            .width(COMBO_BOX_WIDTH)
+                            .selected_text(config.fractal.to_str())
+                            .show_ui(ui, |ui| {
+                                for &variant in Fractal::VARIANTS {
+                                    *changed |= ui
+                                        .selectable_value(
+                                            &mut config.fractal,
+                                            variant,
+                                            variant.to_str(),
+                                        )
+                                        .changed();
+                                }
+                            });
                         ui.end_row();
 
                         let enabled = !matches!(config.fractal, Fractal::None);
@@ -254,6 +273,11 @@ impl eframe::App for App {
                             .changed();
                         ui.end_row();
 
+                        ui.separator();
+                        ui.separator();
+                        ui.separator();
+                        ui.end_row();
+
                         ui.label("Frequency");
                         *changed |= ui
                             .add(Reset::new(&mut config.frequency, DEFAULT_CONFIG.frequency))
@@ -279,20 +303,6 @@ impl eframe::App for App {
                         *changed |= ui
                             .add(egui::DragValue::new(texture_size).clamp_range(0..=1024))
                             .changed();
-                        ui.end_row();
-
-                        ui.label("Dimension");
-                        *changed |= ui.add(Reset::new(dimension, DEFAULT_DIMENSION)).changed();
-                        egui::ComboBox::from_id_source(100)
-                            .width(COMBO_BOX_WIDTH)
-                            .selected_text(dimension.to_str())
-                            .show_ui(ui, |ui| {
-                                for &variant in Dimension::VARIANTS {
-                                    *changed |= ui
-                                        .selectable_value(dimension, variant, variant.to_str())
-                                        .changed();
-                                }
-                            });
                         ui.end_row();
 
                         ui.add_enabled(!matches!(*dimension, Dimension::D2), egui::Label::new("Z"));
