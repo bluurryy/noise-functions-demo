@@ -53,6 +53,5 @@ fn main() {
     create_png("icon_ios_touch_192.png", 192);
     create_png("icon-256.png", 256);
     create_png("icon-1024.png", 1024);
-    create_png("icon-1024.png", 1024);
     create_png("maskable_icon_x512.png", 512);
 }
