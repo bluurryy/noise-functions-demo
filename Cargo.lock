@@ -1052,15 +1052,15 @@ checksum = "2bf50223579dc7cdcfb3bfcacf7069ff68243f8c363f62ffa99cf000a6b9c451"
 
 [[package]]
 name = "noise-functions"
-version = "0.1.0"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99ace09f7e0b77486e3372e45a86f398ad05a47c6ad7e4e1ff423b512b2198b6"
+checksum = "56f7dcfa76adab810535c31e7dcc4093db47ae1a548e259043f6cd2d95e49495"
 
 [[package]]
 name = "noise-functions-config"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d1f33bf5bb0f425feee5b630ce78bf2184f2a6c3bbfb7e0c2717cd721261546"
+checksum = "6333cf46c7c7b4e76f96126884e2aafef5f0d2785438ae15300206946eded4ed"
 dependencies = [
  "noise-functions",
 ]

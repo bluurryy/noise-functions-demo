@@ -49,6 +49,7 @@ const DEFAULT_CONFIG: Config = Config {
     weighted_strength: 0.0,
     frequency: 3.0,
     seed: 0,
+    jitter: 1.0,
 };
 
 const DEFAULT_TEXTURE_SIZE: usize = 295;
@@ -189,6 +190,21 @@ impl eframe::App for App {
                                         .changed();
                                 }
                             });
+                        ui.end_row();
+
+                        ui.add_enabled(
+                            matches!(
+                                config.noise,
+                                Noise::CellValue | Noise::CellDistance | Noise::CellDistanceSq
+                            ),
+                            egui::Label::new("Jitter"),
+                        );
+                        *changed |= ui
+                            .add(Reset::new(&mut config.jitter, DEFAULT_CONFIG.jitter))
+                            .changed();
+                        *changed |= ui
+                            .add(egui::DragValue::new(&mut config.jitter).speed(0.02))
+                            .changed();
                         ui.end_row();
 
                         let enabled = !matches!(config.fractal, Fractal::None);
