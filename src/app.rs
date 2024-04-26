@@ -54,7 +54,7 @@ const DEFAULT_CONFIG: Config = Config {
 const DEFAULT_TEXTURE_SIZE: usize = 295;
 const DEFAULT_DIMENSION: Dimension = Dimension::D2;
 const DEFAULT_Z: f32 = 0.0;
-const DEFAULT_SIMD: bool = true;
+const DEFAULT_SIMD: bool = false;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Dimension {
