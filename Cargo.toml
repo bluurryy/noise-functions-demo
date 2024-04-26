@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 eframe = { version = "0.27.2", default-features = false, features = ["default_fonts", "glow"] }
 log = "0.4"
-noise-functions-config = { path = "../noise-functions-config", features = ["nightly-simd"] }
+noise-functions-config = { version = "0.1.0", features = ["nightly-simd"] }
 web-time = "1.1.0"
 ahash = { version = "0.8.11", default-features = false } # just fixing something
 
