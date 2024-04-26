@@ -117,7 +117,7 @@ impl eframe::App for App {
                     ui.hyperlink_to(
                         egui::RichText::new(format!(" on GitHub {}", egui::special_emojis::GITHUB))
                             .heading(),
-                        "https://github.com/bluurryy/noise-functions",
+                        "https://github.com/bluurryy/noise-functions-demo",
                     );
                 });
 
