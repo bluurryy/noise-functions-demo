@@ -46,6 +46,7 @@ const DEFAULT_CONFIG: Config = Config {
     lacunarity: 2.0,
     octaves: 3,
     gain: 0.5,
+    ping_pong_strength: 2.0,
     weighted_strength: 0.0,
     frequency: 3.0,
     seed: 0,
@@ -270,6 +271,21 @@ impl eframe::App for App {
                             .changed();
                         *changed |= ui
                             .add(egui::Slider::new(&mut config.weighted_strength, 0.0..=1.0))
+                            .changed();
+                        ui.end_row();
+
+                        ui.add_enabled(
+                            enabled && config.fractal == Fractal::PingPong,
+                            egui::Label::new("Ping Pong Strength"),
+                        );
+                        *changed |= ui
+                            .add(Reset::new(
+                                &mut config.ping_pong_strength,
+                                DEFAULT_CONFIG.ping_pong_strength,
+                            ))
+                            .changed();
+                        *changed |= ui
+                            .add(egui::Slider::new(&mut config.ping_pong_strength, 0.5..=3.0))
                             .changed();
                         ui.end_row();
 

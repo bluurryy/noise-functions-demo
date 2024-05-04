@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 eframe = { version = "0.27.2", default-features = false, features = ["default_fonts", "glow"] }
 log = "0.4"
-noise-functions-config = { version = "0.2.0", features = ["nightly-simd"] }
+noise-functions-config = { version = "0.4.0", features = ["nightly-simd"] }
 web-time = "1.1.0"
 ahash = { version = "0.8.11", default-features = false } # just fixing something
 
@@ -26,3 +26,6 @@ opt-level = 2
 members = [
   "generate-icons",
 ]
+
+# [patch.crates-io]
+# noise-functions-config = { path = "../noise-functions/crates/noise-functions-config" }
