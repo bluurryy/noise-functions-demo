@@ -1,5 +1,5 @@
 [build]
-filehash = false
+filehash = true
 release = true
 dist = "noise-functions-demo"
 public_url = "/noise-functions-demo/"
