@@ -1,17 +1,7 @@
 name: GitHub Pages
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - .github/workflows/pages.yml
-      - src/**
-      - .cargo/**
-      - Trunk.toml
-      - index.html
-      - Cargo.toml
-      - assets
+  release:
   workflow_dispatch:
 
 permissions:
