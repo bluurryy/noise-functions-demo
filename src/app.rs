@@ -58,6 +58,12 @@ const DEFAULT_DIMENSION: Dimension = Dimension::D2;
 const DEFAULT_Z: f32 = 0.0;
 const DEFAULT_SIMD: bool = false;
 
+#[cfg(debug_assertions)]
+const VERSION: &str = concat!("v", env!("CARGO_PKG_VERSION"), " (debug)");
+
+#[cfg(not(debug_assertions))]
+const VERSION: &str = concat!("v", env!("CARGO_PKG_VERSION"));
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Dimension {
     D2,
@@ -449,6 +455,26 @@ impl eframe::App for App {
                 self.image_preview_contents(ui, frame);
             }
         });
+
+        egui::Window::new("")
+            .anchor(egui::Align2::RIGHT_BOTTOM, [-5.0, -5.0])
+            .interactable(false)
+            .movable(false)
+            .resizable(false)
+            .collapsible(false)
+            .auto_sized()
+            .title_bar(false)
+            .frame(egui::Frame {
+                inner_margin: egui::Margin::same(2.0),
+                outer_margin: egui::Margin::ZERO,
+                rounding: egui::Rounding::ZERO,
+                shadow: egui::epaint::Shadow::NONE,
+                fill: egui::Color32::TRANSPARENT,
+                stroke: egui::epaint::Stroke::NONE,
+            })
+            .show(ctx, |ui| {
+                ui.label(VERSION);
+            });
     }
 }
 
