@@ -422,9 +422,7 @@ impl App {
 
         let size = texture.size_vec2();
         let sized_texture = egui::load::SizedTexture::new(texture, size);
-        ui.add(egui::Image::new(sized_texture));
-
-        ui.label(format!("elapsed: {:?}", self.elapsed));
+        ui.add(egui::Image::new(sized_texture).fit_to_exact_size(size));
     }
 }
 
@@ -442,17 +440,36 @@ impl eframe::App for App {
         egui::SidePanel::left("settings_panel")
             .resizable(false)
             .show(ctx, |ui| {
-                ui.add_space(6.0);
-                self.settings_panel_contents(ui, frame);
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    ui.add_space(6.0);
+                    self.settings_panel_contents(ui, frame);
 
-                if is_mobile {
-                    self.image_preview_contents(ui, frame);
-                }
+                    if is_mobile {
+                        self.image_preview_contents(ui, frame);
+                    } else {
+                        ui.separator();
+                    }
+
+                    ui.label(format!("elapsed: {:?}", self.elapsed));
+                });
             });
 
         egui::CentralPanel::default().show(ctx, |ui| {
             if !is_mobile {
-                self.image_preview_contents(ui, frame);
+                const TOP_LEFT_JUSTIFIED: egui::Layout = egui::Layout {
+                    main_dir: egui::Direction::TopDown,
+                    main_wrap: false,
+                    main_align: egui::Align::Min,
+                    main_justify: true,
+                    cross_align: egui::Align::Min,
+                    cross_justify: true,
+                };
+
+                ui.with_layout(TOP_LEFT_JUSTIFIED, |ui| {
+                    egui::ScrollArea::both().show(ui, |ui| {
+                        self.image_preview_contents(ui, frame);
+                    });
+                });
             }
         });
 
