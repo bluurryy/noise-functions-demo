@@ -128,7 +128,7 @@ impl App {
             .min_col_width(0.0)
             .num_columns(3)
             .show(ui, |ui| {
-                ui.label("Type");
+                ui.add(egui::Label::new("Type").selectable(false));
                 *changed |= ui
                     .add(Reset::new(&mut config.noise, DEFAULT_CONFIG.noise))
                     .changed();
@@ -144,7 +144,7 @@ impl App {
                     });
                 ui.end_row();
 
-                ui.label("Dimension");
+                ui.add(egui::Label::new("Dimension").selectable(false));
                 *changed |= ui.add(Reset::new(dimension, DEFAULT_DIMENSION)).changed();
                 egui::ComboBox::from_id_source(100)
                     .width(COMBO_BOX_WIDTH)
@@ -160,7 +160,7 @@ impl App {
 
                 let enabled = matches!(config.noise, Noise::OpenSimplex2 | Noise::OpenSimplex2s)
                     && !matches!(*dimension, Dimension::D2);
-                ui.add_enabled(enabled, egui::Label::new("Improve"));
+                ui.add_enabled(enabled, egui::Label::new("Improve").selectable(false));
                 *changed |= ui
                     .add(Reset::new(&mut config.improve, DEFAULT_CONFIG.improve))
                     .changed();
@@ -181,7 +181,7 @@ impl App {
                         config.noise,
                         Noise::CellValue | Noise::CellDistance | Noise::CellDistanceSq
                     ),
-                    egui::Label::new("Jitter"),
+                    egui::Label::new("Jitter").selectable(false),
                 );
                 *changed |= ui
                     .add(Reset::new(&mut config.jitter, DEFAULT_CONFIG.jitter))
@@ -196,7 +196,7 @@ impl App {
                 ui.separator();
                 ui.end_row();
 
-                ui.label("Fractal");
+                ui.add(egui::Label::new("Fractal").selectable(false));
                 *changed |= ui
                     .add(Reset::new(&mut config.fractal, DEFAULT_CONFIG.fractal))
                     .changed();
@@ -213,7 +213,7 @@ impl App {
                 ui.end_row();
 
                 let enabled = !matches!(config.fractal, Fractal::None);
-                ui.add_enabled(enabled, egui::Label::new("Octaves"));
+                ui.add_enabled(enabled, egui::Label::new("Octaves").selectable(false));
                 *changed |= ui
                     .add(Reset::new(&mut config.octaves, DEFAULT_CONFIG.octaves))
                     .changed();
@@ -226,7 +226,7 @@ impl App {
                     .changed();
                 ui.end_row();
 
-                ui.add_enabled(enabled, egui::Label::new("Lacunarity"));
+                ui.add_enabled(enabled, egui::Label::new("Lacunarity").selectable(false));
                 *changed |= ui
                     .add(Reset::new(
                         &mut config.lacunarity,
@@ -238,7 +238,7 @@ impl App {
                     .changed();
                 ui.end_row();
 
-                ui.add_enabled(enabled, egui::Label::new("Gain"));
+                ui.add_enabled(enabled, egui::Label::new("Gain").selectable(false));
                 *changed |= ui
                     .add(Reset::new(&mut config.gain, DEFAULT_CONFIG.gain))
                     .changed();
@@ -247,7 +247,10 @@ impl App {
                     .changed();
                 ui.end_row();
 
-                ui.add_enabled(enabled, egui::Label::new("Weighted Strength"));
+                ui.add_enabled(
+                    enabled,
+                    egui::Label::new("Weighted Strength").selectable(false),
+                );
                 *changed |= ui
                     .add(Reset::new(
                         &mut config.weighted_strength,
@@ -261,7 +264,7 @@ impl App {
 
                 ui.add_enabled(
                     enabled && config.fractal == Fractal::PingPong,
-                    egui::Label::new("Ping Pong Strength"),
+                    egui::Label::new("Ping Pong Strength").selectable(false),
                 );
                 *changed |= ui
                     .add(Reset::new(
@@ -279,7 +282,7 @@ impl App {
                 ui.separator();
                 ui.end_row();
 
-                ui.label("Frequency");
+                ui.add(egui::Label::new("Frequency").selectable(false));
                 *changed |= ui
                     .add(Reset::new(&mut config.frequency, DEFAULT_CONFIG.frequency))
                     .changed();
@@ -288,7 +291,7 @@ impl App {
                     .changed();
                 ui.end_row();
 
-                ui.label("Seed");
+                ui.add(egui::Label::new("Seed").selectable(false));
                 *changed |= ui
                     .add(Reset::new(&mut config.seed, DEFAULT_CONFIG.seed))
                     .changed();
@@ -297,7 +300,7 @@ impl App {
                     .changed();
                 ui.end_row();
 
-                ui.label("Texture Size");
+                ui.add(egui::Label::new("Texture Size").selectable(false));
                 *changed |= ui
                     .add(Reset::new(texture_size, DEFAULT_TEXTURE_SIZE))
                     .changed();
@@ -306,12 +309,15 @@ impl App {
                     .changed();
                 ui.end_row();
 
-                ui.add_enabled(!matches!(*dimension, Dimension::D2), egui::Label::new("Z"));
+                ui.add_enabled(
+                    !matches!(*dimension, Dimension::D2),
+                    egui::Label::new("Z").selectable(false),
+                );
                 *changed |= ui.add(Reset::new(z, DEFAULT_Z)).changed();
                 *changed |= ui.add(egui::DragValue::new(z).speed(0.002)).changed();
                 ui.end_row();
 
-                ui.label("Simd");
+                ui.add(egui::Label::new("Simd").selectable(false));
                 *changed |= ui.add(Reset::new(simd, DEFAULT_SIMD)).changed();
                 *changed |= ui.add(egui::Checkbox::without_text(simd)).changed();
                 ui.end_row();
@@ -450,7 +456,9 @@ impl eframe::App for App {
                         ui.separator();
                     }
 
-                    ui.label(format!("elapsed: {:?}", self.elapsed));
+                    ui.add(
+                        egui::Label::new(format!("elapsed: {:?}", self.elapsed)).selectable(false),
+                    );
                 });
             });
 
@@ -490,7 +498,7 @@ impl eframe::App for App {
                 stroke: egui::epaint::Stroke::NONE,
             })
             .show(ctx, |ui| {
-                ui.label(VERSION);
+                ui.add(egui::Label::new(VERSION).selectable(false));
             });
     }
 }
