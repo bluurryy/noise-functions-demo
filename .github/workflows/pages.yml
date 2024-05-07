@@ -2,6 +2,8 @@ name: GitHub Pages
 
 on:
   release:
+    types:
+      - released
   workflow_dispatch:
 
 permissions:
