@@ -1,0 +1,41 @@
+name: GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/pages.yml
+      - src/**
+      - .cargo/**
+      - Trunk.toml
+      - index.html
+      - Cargo.toml
+      - assets
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-github-pages:
+    runs-on: ubuntu-latest
+    steps: 
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          target: wasm32-unknown-unknown
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v1
+      - name: Install Trunk
+        run: wget -qO- https://github.com/thedodd/trunk/releases/latest/download/trunk-x86_64-unknown-linux-gnu.tar.gz | tar -xzf-
+      - name: Build
+        run: ./trunk build --release --public-url $public_url
+        env:
+          public_url: "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+      - name: Deploy
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: dist
+          single-commit: true
