@@ -514,7 +514,7 @@ impl<'v, T> Reset<'v, T> {
     }
 }
 
-impl<'v, T: PartialEq> egui::Widget for Reset<'v, T> {
+impl<T: PartialEq> egui::Widget for Reset<'_, T> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         let Reset { value, default } = self;
         let mut response = ui.add_enabled(*value != default, egui::Button::new("⟲"));
