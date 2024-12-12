@@ -215,7 +215,7 @@ impl App {
                         enabled: config.fractal != Fractal::None,
                         value: &mut config.octaves,
                         default: DEFAULT_CONFIG.octaves,
-                        widget: |v| egui::DragValue::new(v).speed(0.02).clamp_range(1..=8),
+                        widget: |v| egui::DragValue::new(v).speed(0.02).range(1..=8),
                     },
                 );
 
@@ -301,7 +301,7 @@ impl App {
                         enabled: true,
                         value: texture_size,
                         default: DEFAULT_TEXTURE_SIZE,
-                        widget: |v| egui::DragValue::new(v).clamp_range(0..=1024),
+                        widget: |v| egui::DragValue::new(v).range(0..=1024),
                     },
                 );
 
@@ -573,7 +573,7 @@ where
         let egui::InnerResponse {
             inner,
             mut response,
-        } = egui::ComboBox::from_id_source(id)
+        } = egui::ComboBox::from_id_salt(id)
             .width(COMBO_BOX_WIDTH)
             .selected_text(to_str(*value))
             .show_ui(ui, |ui| {
