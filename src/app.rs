@@ -1,3 +1,5 @@
+use std::hash::Hash;
+
 use web_time::{Duration, Instant};
 
 use eframe::egui;
@@ -128,199 +130,204 @@ impl App {
             .min_col_width(0.0)
             .num_columns(3)
             .show(ui, |ui| {
-                ui.add(egui::Label::new("Type").selectable(false));
-                *changed |= ui
-                    .add(Reset::new(&mut config.noise, DEFAULT_CONFIG.noise))
-                    .changed();
-                egui::ComboBox::from_id_source(0)
-                    .width(COMBO_BOX_WIDTH)
-                    .selected_text(config.noise.to_str())
-                    .show_ui(ui, |ui| {
-                        for &variant in Noise::VARIANTS {
-                            *changed |= ui
-                                .selectable_value(&mut config.noise, variant, variant.to_str())
-                                .changed();
+                macro_rules! combo_box {
+                    ($id:literal, $ty:ident) => {
+                        |value| SimpleComboBox {
+                            id: $id,
+                            value,
+                            variants: $ty::VARIANTS,
+                            to_str: $ty::to_str,
                         }
-                    });
-                ui.end_row();
+                    };
+                }
 
-                ui.add(egui::Label::new("Dimension").selectable(false));
-                *changed |= ui.add(Reset::new(dimension, DEFAULT_DIMENSION)).changed();
-                egui::ComboBox::from_id_source(100)
-                    .width(COMBO_BOX_WIDTH)
-                    .selected_text(dimension.to_str())
-                    .show_ui(ui, |ui| {
-                        for &variant in Dimension::VARIANTS {
-                            *changed |= ui
-                                .selectable_value(dimension, variant, variant.to_str())
-                                .changed();
-                        }
-                    });
-                ui.end_row();
-
-                let enabled = matches!(config.noise, Noise::OpenSimplex2 | Noise::OpenSimplex2s)
-                    && !matches!(*dimension, Dimension::D2);
-                ui.add_enabled(enabled, egui::Label::new("Improve").selectable(false));
-                *changed |= ui
-                    .add(Reset::new(&mut config.improve, DEFAULT_CONFIG.improve))
-                    .changed();
-                egui::ComboBox::from_id_source(2)
-                    .width(COMBO_BOX_WIDTH)
-                    .selected_text(config.improve.to_str())
-                    .show_ui(ui, |ui| {
-                        for &variant in Improve::VARIANTS {
-                            *changed |= ui
-                                .selectable_value(&mut config.improve, variant, variant.to_str())
-                                .changed();
-                        }
-                    });
-                ui.end_row();
-
-                ui.add_enabled(
-                    matches!(
-                        config.noise,
-                        Noise::CellValue | Noise::CellDistance | Noise::CellDistanceSq
-                    ),
-                    egui::Label::new("Jitter").selectable(false),
+                setting(
+                    changed,
+                    ui,
+                    Setting {
+                        name: "Type",
+                        enabled: true,
+                        value: &mut config.noise,
+                        default: DEFAULT_CONFIG.noise,
+                        widget: combo_box!(0, Noise),
+                    },
                 );
-                *changed |= ui
-                    .add(Reset::new(&mut config.jitter, DEFAULT_CONFIG.jitter))
-                    .changed();
-                *changed |= ui
-                    .add(egui::DragValue::new(&mut config.jitter).speed(0.02))
-                    .changed();
-                ui.end_row();
 
-                ui.separator();
-                ui.separator();
-                ui.separator();
-                ui.end_row();
-
-                ui.add(egui::Label::new("Fractal").selectable(false));
-                *changed |= ui
-                    .add(Reset::new(&mut config.fractal, DEFAULT_CONFIG.fractal))
-                    .changed();
-                egui::ComboBox::from_id_source(1)
-                    .width(COMBO_BOX_WIDTH)
-                    .selected_text(config.fractal.to_str())
-                    .show_ui(ui, |ui| {
-                        for &variant in Fractal::VARIANTS {
-                            *changed |= ui
-                                .selectable_value(&mut config.fractal, variant, variant.to_str())
-                                .changed();
-                        }
-                    });
-                ui.end_row();
-
-                let enabled = !matches!(config.fractal, Fractal::None);
-                ui.add_enabled(enabled, egui::Label::new("Octaves").selectable(false));
-                *changed |= ui
-                    .add(Reset::new(&mut config.octaves, DEFAULT_CONFIG.octaves))
-                    .changed();
-                *changed |= ui
-                    .add(
-                        egui::DragValue::new(&mut config.octaves)
-                            .speed(0.02)
-                            .clamp_range(1..=8),
-                    )
-                    .changed();
-                ui.end_row();
-
-                ui.add_enabled(enabled, egui::Label::new("Lacunarity").selectable(false));
-                *changed |= ui
-                    .add(Reset::new(
-                        &mut config.lacunarity,
-                        DEFAULT_CONFIG.lacunarity,
-                    ))
-                    .changed();
-                *changed |= ui
-                    .add(egui::DragValue::new(&mut config.lacunarity).speed(0.02))
-                    .changed();
-                ui.end_row();
-
-                ui.add_enabled(enabled, egui::Label::new("Gain").selectable(false));
-                *changed |= ui
-                    .add(Reset::new(&mut config.gain, DEFAULT_CONFIG.gain))
-                    .changed();
-                *changed |= ui
-                    .add(egui::DragValue::new(&mut config.gain).speed(0.02))
-                    .changed();
-                ui.end_row();
-
-                ui.add_enabled(
-                    enabled,
-                    egui::Label::new("Weighted Strength").selectable(false),
+                setting(
+                    changed,
+                    ui,
+                    Setting {
+                        name: "Dimension",
+                        enabled: true,
+                        value: dimension,
+                        default: DEFAULT_DIMENSION,
+                        widget: combo_box!(1, Dimension),
+                    },
                 );
-                *changed |= ui
-                    .add(Reset::new(
-                        &mut config.weighted_strength,
-                        DEFAULT_CONFIG.weighted_strength,
-                    ))
-                    .changed();
-                *changed |= ui
-                    .add(egui::Slider::new(&mut config.weighted_strength, 0.0..=1.0))
-                    .changed();
-                ui.end_row();
 
-                ui.add_enabled(
-                    enabled && config.fractal == Fractal::PingPong,
-                    egui::Label::new("Ping Pong Strength").selectable(false),
+                setting(
+                    changed,
+                    ui,
+                    Setting {
+                        name: "Improve",
+                        enabled: matches!(config.noise, Noise::OpenSimplex2 | Noise::OpenSimplex2s)
+                            && !matches!(*dimension, Dimension::D2),
+                        value: &mut config.improve,
+                        default: DEFAULT_CONFIG.improve,
+                        widget: combo_box!(2, Improve),
+                    },
                 );
-                *changed |= ui
-                    .add(Reset::new(
-                        &mut config.ping_pong_strength,
-                        DEFAULT_CONFIG.ping_pong_strength,
-                    ))
-                    .changed();
-                *changed |= ui
-                    .add(egui::Slider::new(&mut config.ping_pong_strength, 0.5..=3.0))
-                    .changed();
-                ui.end_row();
 
-                ui.separator();
-                ui.separator();
-                ui.separator();
-                ui.end_row();
-
-                ui.add(egui::Label::new("Frequency").selectable(false));
-                *changed |= ui
-                    .add(Reset::new(&mut config.frequency, DEFAULT_CONFIG.frequency))
-                    .changed();
-                *changed |= ui
-                    .add(egui::DragValue::new(&mut config.frequency).speed(0.02))
-                    .changed();
-                ui.end_row();
-
-                ui.add(egui::Label::new("Seed").selectable(false));
-                *changed |= ui
-                    .add(Reset::new(&mut config.seed, DEFAULT_CONFIG.seed))
-                    .changed();
-                *changed |= ui
-                    .add(egui::DragValue::new(&mut config.seed).speed(0.1))
-                    .changed();
-                ui.end_row();
-
-                ui.add(egui::Label::new("Texture Size").selectable(false));
-                *changed |= ui
-                    .add(Reset::new(texture_size, DEFAULT_TEXTURE_SIZE))
-                    .changed();
-                *changed |= ui
-                    .add(egui::DragValue::new(texture_size).clamp_range(0..=1024))
-                    .changed();
-                ui.end_row();
-
-                ui.add_enabled(
-                    !matches!(*dimension, Dimension::D2),
-                    egui::Label::new("Z").selectable(false),
+                setting(
+                    changed,
+                    ui,
+                    Setting {
+                        name: "Jitter",
+                        enabled: matches!(
+                            config.noise,
+                            Noise::CellValue | Noise::CellDistance | Noise::CellDistanceSq
+                        ),
+                        value: &mut config.jitter,
+                        default: DEFAULT_CONFIG.jitter,
+                        widget: |v| egui::DragValue::new(v).speed(0.02),
+                    },
                 );
-                *changed |= ui.add(Reset::new(z, DEFAULT_Z)).changed();
-                *changed |= ui.add(egui::DragValue::new(z).speed(0.002)).changed();
-                ui.end_row();
 
-                ui.add(egui::Label::new("Simd").selectable(false));
-                *changed |= ui.add(Reset::new(simd, DEFAULT_SIMD)).changed();
-                *changed |= ui.add(egui::Checkbox::without_text(simd)).changed();
-                ui.end_row();
+                setting_separator(ui);
+
+                setting(
+                    changed,
+                    ui,
+                    Setting {
+                        name: "Fractal",
+                        enabled: true,
+                        value: &mut config.fractal,
+                        default: DEFAULT_CONFIG.fractal,
+                        widget: combo_box!(3, Fractal),
+                    },
+                );
+
+                setting(
+                    changed,
+                    ui,
+                    Setting {
+                        name: "Octaves",
+                        enabled: config.fractal != Fractal::None,
+                        value: &mut config.octaves,
+                        default: DEFAULT_CONFIG.octaves,
+                        widget: |v| egui::DragValue::new(v).speed(0.02).clamp_range(1..=8),
+                    },
+                );
+
+                setting(
+                    changed,
+                    ui,
+                    Setting {
+                        name: "Lacunarity",
+                        enabled: config.fractal != Fractal::None,
+                        value: &mut config.lacunarity,
+                        default: DEFAULT_CONFIG.lacunarity,
+                        widget: |v| egui::DragValue::new(v).speed(0.02),
+                    },
+                );
+
+                setting(
+                    changed,
+                    ui,
+                    Setting {
+                        name: "Gain",
+                        enabled: config.fractal != Fractal::None,
+                        value: &mut config.gain,
+                        default: DEFAULT_CONFIG.gain,
+                        widget: |v| egui::DragValue::new(v).speed(0.02),
+                    },
+                );
+
+                setting(
+                    changed,
+                    ui,
+                    Setting {
+                        name: "Weighted Strength",
+                        enabled: config.fractal != Fractal::None,
+                        value: &mut config.weighted_strength,
+                        default: DEFAULT_CONFIG.weighted_strength,
+                        widget: |v| egui::Slider::new(v, 0.0..=1.0),
+                    },
+                );
+
+                setting(
+                    changed,
+                    ui,
+                    Setting {
+                        name: "Ping Pong Strength",
+                        enabled: config.fractal == Fractal::PingPong,
+                        value: &mut config.ping_pong_strength,
+                        default: DEFAULT_CONFIG.ping_pong_strength,
+                        widget: |v| egui::Slider::new(v, 0.5..=3.0),
+                    },
+                );
+
+                setting_separator(ui);
+
+                setting(
+                    changed,
+                    ui,
+                    Setting {
+                        name: "Frequency",
+                        enabled: true,
+                        value: &mut config.frequency,
+                        default: DEFAULT_CONFIG.frequency,
+                        widget: |v| egui::DragValue::new(v).speed(0.02),
+                    },
+                );
+
+                setting(
+                    changed,
+                    ui,
+                    Setting {
+                        name: "Seed",
+                        enabled: true,
+                        value: &mut config.seed,
+                        default: DEFAULT_CONFIG.seed,
+                        widget: |v| egui::DragValue::new(v).speed(0.1),
+                    },
+                );
+
+                setting(
+                    changed,
+                    ui,
+                    Setting {
+                        name: "Texture Size",
+                        enabled: true,
+                        value: texture_size,
+                        default: DEFAULT_TEXTURE_SIZE,
+                        widget: |v| egui::DragValue::new(v).clamp_range(0..=1024),
+                    },
+                );
+
+                setting(
+                    changed,
+                    ui,
+                    Setting {
+                        name: "Z",
+                        enabled: !matches!(*dimension, Dimension::D2),
+                        value: z,
+                        default: DEFAULT_Z,
+                        widget: |v| egui::DragValue::new(v).speed(0.002),
+                    },
+                );
+
+                setting(
+                    changed,
+                    ui,
+                    Setting {
+                        name: "Simd",
+                        enabled: true,
+                        value: simd,
+                        default: DEFAULT_SIMD,
+                        widget: egui::Checkbox::without_text,
+                    },
+                );
             });
 
         ui.add_space(5.0);
@@ -500,6 +507,92 @@ impl eframe::App for App {
             .show(ctx, |ui| {
                 ui.add(egui::Label::new(VERSION).selectable(false));
             });
+    }
+}
+
+fn setting(changed: &mut bool, ui: &mut egui::Ui, setting: impl egui::Widget) {
+    *changed |= ui.add(setting).changed();
+}
+
+fn setting_separator(ui: &mut egui::Ui) {
+    ui.separator();
+    ui.separator();
+    ui.separator();
+    ui.end_row();
+}
+
+pub struct Setting<'v, T, W> {
+    name: &'static str,
+    enabled: bool,
+    value: &'v mut T,
+    default: T,
+    widget: fn(&'v mut T) -> W,
+}
+
+impl<'v, T, W> egui::Widget for Setting<'_, T, W>
+where
+    W: egui::Widget,
+    T: PartialEq,
+{
+    fn ui(self, ui: &mut egui::Ui) -> egui::Response {
+        let Setting {
+            name,
+            enabled,
+            value,
+            default,
+            widget,
+        } = self;
+
+        ui.add_enabled(enabled, egui::Label::new(name).selectable(false));
+        let response = ui.add(Reset::new(value, default)) | ui.add(widget(value));
+        ui.end_row();
+        response
+    }
+}
+
+pub struct SimpleComboBox<'v, I, T: 'static> {
+    id: I,
+    value: &'v mut T,
+    variants: &'static [T],
+    to_str: fn(T) -> &'static str,
+}
+
+impl<I, T> egui::Widget for SimpleComboBox<'_, I, T>
+where
+    I: Hash,
+    T: PartialEq + Copy,
+{
+    fn ui(self, ui: &mut egui::Ui) -> egui::Response {
+        let Self {
+            id,
+            value,
+            variants,
+            to_str,
+        } = self;
+
+        let egui::InnerResponse {
+            inner,
+            mut response,
+        } = egui::ComboBox::from_id_source(id)
+            .width(COMBO_BOX_WIDTH)
+            .selected_text(to_str(*value))
+            .show_ui(ui, |ui| {
+                let mut changed = false;
+
+                for &variant in variants {
+                    changed |= ui
+                        .selectable_value(value, variant, to_str(variant))
+                        .changed();
+                }
+
+                changed
+            });
+
+        if inner == Some(true) {
+            response.mark_changed();
+        }
+
+        response
     }
 }
 
