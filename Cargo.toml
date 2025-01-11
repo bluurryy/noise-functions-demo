@@ -28,5 +28,5 @@ opt-level = 2
 [workspace]
 members = ["generate-icons"]
 
-# [patch.crates-io]
-# noise-functions-config = { path = "../noise-functions/crates/noise-functions-config" }
+[patch.crates-io]
+noise-functions-config = { path = "../noise-functions/crates/noise-functions-config" }

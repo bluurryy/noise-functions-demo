@@ -12,8 +12,10 @@ pub struct App {
     changed: bool,
     dimension: Dimension,
     z: f32,
+    w: f32,
     simd: bool,
     elapsed: Duration,
+    show_tiles: bool,
 
     // we cache the vecs so we don't need to allocate them each update
     cache: Cache,
@@ -42,8 +44,8 @@ impl Cache {
 }
 
 const DEFAULT_CONFIG: Config = Config {
-    noise: Noise::OpenSimplex2,
-    fractal: Fractal::Fbm,
+    noise: Noise::NewValue,
+    fractal: Fractal::None,
     improve: Improve::Xy,
     lacunarity: 2.0,
     octaves: 3,
@@ -53,12 +55,17 @@ const DEFAULT_CONFIG: Config = Config {
     frequency: 3.0,
     seed: 0,
     jitter: 1.0,
+    tileable: false,
+    tile_width: 3.0,
+    tile_height: 3.0,
 };
 
 const DEFAULT_TEXTURE_SIZE: usize = 295;
 const DEFAULT_DIMENSION: Dimension = Dimension::D2;
 const DEFAULT_Z: f32 = 0.0;
+const DEFAULT_W: f32 = 0.0;
 const DEFAULT_SIMD: bool = false;
+const DEFAULT_SHOW_TILES: bool = false;
 
 #[cfg(debug_assertions)]
 const VERSION: &str = concat!("v", env!("CARGO_PKG_VERSION"), " (debug)");
@@ -70,15 +77,17 @@ const VERSION: &str = concat!("v", env!("CARGO_PKG_VERSION"));
 pub enum Dimension {
     D2,
     D3,
+    D4,
 }
 
 impl Dimension {
-    pub const VARIANTS: &'static [Self] = &[Self::D2, Self::D3];
+    pub const VARIANTS: &'static [Self] = &[Self::D2, Self::D3, Self::D4];
 
     pub fn to_str(self) -> &'static str {
         match self {
             Dimension::D2 => "2D",
             Dimension::D3 => "3D",
+            Dimension::D4 => "4D",
         }
     }
 }
@@ -95,10 +104,12 @@ impl App {
             texture_size: DEFAULT_TEXTURE_SIZE,
             dimension: DEFAULT_DIMENSION,
             z: DEFAULT_Z,
+            w: DEFAULT_W,
             simd: DEFAULT_SIMD,
             changed: true,
             elapsed: Duration::from_nanos(0),
             cache: Default::default(),
+            show_tiles: false,
         }
     }
 
@@ -109,7 +120,9 @@ impl App {
             changed,
             dimension,
             z,
+            w,
             simd,
+            show_tiles,
             ..
         } = self;
 
@@ -297,6 +310,44 @@ impl App {
                     changed,
                     ui,
                     Setting {
+                        name: "Tileable",
+                        enabled: matches!(dimension, Dimension::D2),
+                        value: &mut config.tileable,
+                        default: DEFAULT_CONFIG.tileable,
+                        widget: egui::Checkbox::without_text,
+                    },
+                );
+
+                setting(
+                    changed,
+                    ui,
+                    Setting {
+                        name: "Tile Width",
+                        enabled: config.tileable,
+                        value: &mut config.tile_width,
+                        default: DEFAULT_CONFIG.tile_width,
+                        widget: |v| egui::DragValue::new(v).speed(0.02),
+                    },
+                );
+
+                setting(
+                    changed,
+                    ui,
+                    Setting {
+                        name: "Tile Height",
+                        enabled: config.tileable,
+                        value: &mut config.tile_height,
+                        default: DEFAULT_CONFIG.tile_height,
+                        widget: |v| egui::DragValue::new(v).speed(0.02),
+                    },
+                );
+
+                setting_separator(ui);
+
+                setting(
+                    changed,
+                    ui,
+                    Setting {
                         name: "Texture Size",
                         enabled: true,
                         value: texture_size,
@@ -310,10 +361,34 @@ impl App {
                     ui,
                     Setting {
                         name: "Z",
-                        enabled: !matches!(*dimension, Dimension::D2),
+                        enabled: matches!(*dimension, Dimension::D3 | Dimension::D4),
                         value: z,
                         default: DEFAULT_Z,
                         widget: |v| egui::DragValue::new(v).speed(0.002),
+                    },
+                );
+
+                setting(
+                    changed,
+                    ui,
+                    Setting {
+                        name: "W",
+                        enabled: matches!(*dimension, Dimension::D4),
+                        value: w,
+                        default: DEFAULT_W,
+                        widget: |v| egui::DragValue::new(v).speed(0.002),
+                    },
+                );
+
+                setting(
+                    changed,
+                    ui,
+                    Setting {
+                        name: "Show Tiles",
+                        enabled: true,
+                        value: show_tiles,
+                        default: DEFAULT_SHOW_TILES,
+                        widget: egui::Checkbox::without_text,
                     },
                 );
 
@@ -341,6 +416,7 @@ impl App {
             changed,
             dimension,
             z,
+            w,
             simd,
             cache,
             ..
@@ -351,62 +427,65 @@ impl App {
 
             let size = *texture_size;
             let z = *z;
+            let w = *w;
 
             cache.resize(size * size);
 
-            let scalar = 1.0 / size as f32;
-            let scalar_times_2 = scalar * 2.0;
             let start = Instant::now();
 
+            fn sample(values: &mut [f32], size: usize, f: impl Fn(f32, f32) -> f32) {
+                let scalar = 1.0 / size as f32;
+                let scalar_times_two = scalar * 2.0;
+
+                for x in 0..size {
+                    for y in 0..size {
+                        let i = x * size + y;
+                        let x = x as f32 * scalar_times_two - 1.0;
+                        let y = y as f32 * scalar_times_two - 1.0;
+                        values[i] = f(x, y);
+                    }
+                }
+            }
+
             if *simd {
-                if *dimension == Dimension::D2 {
-                    let sampler = config.sampler2a();
-
-                    for x in 0..size {
-                        for y in 0..size {
-                            let i = x * size + y;
-                            let x = x as f32 * scalar_times_2 - 1.0;
-                            let y = y as f32 * scalar_times_2 - 1.0;
-
-                            cache.values[i] = sampler.sample([x, y].into());
+                match dimension {
+                    Dimension::D2 => {
+                        if let Some(sampler) = config.sampler2a() {
+                            sample(&mut cache.values, size, |x, y| {
+                                sampler.sample([x, y].into())
+                            });
                         }
                     }
-                } else {
-                    let sampler = config.sampler3a();
-
-                    for x in 0..size {
-                        for y in 0..size {
-                            let i = x * size + y;
-                            let x = x as f32 * scalar_times_2 - 1.0;
-                            let y = y as f32 * scalar_times_2 - 1.0;
-
-                            cache.values[i] = sampler.sample([x, y, z, 0.0].into());
+                    Dimension::D3 => {
+                        if let Some(sampler) = config.sampler3a() {
+                            sample(&mut cache.values, size, |x, y| {
+                                sampler.sample([x, y, z, 0.0].into())
+                            });
+                        }
+                    }
+                    Dimension::D4 => {
+                        if let Some(sampler) = config.sampler4a() {
+                            sample(&mut cache.values, size, |x, y| {
+                                sampler.sample([x, y, z, w].into())
+                            });
                         }
                     }
                 }
             } else {
-                if *dimension == Dimension::D2 {
-                    let sampler = config.sampler2();
-
-                    for x in 0..size {
-                        for y in 0..size {
-                            let i = x * size + y;
-                            let x = x as f32 * scalar_times_2 - 1.0;
-                            let y = y as f32 * scalar_times_2 - 1.0;
-
-                            cache.values[i] = sampler.sample([x, y]);
+                match dimension {
+                    Dimension::D2 => {
+                        if let Some(sampler) = config.sampler2() {
+                            sample(&mut cache.values, size, |x, y| sampler.sample([x, y]));
                         }
                     }
-                } else {
-                    let sampler = config.sampler3();
-
-                    for x in 0..size {
-                        for y in 0..size {
-                            let i = x * size + y;
-                            let x = x as f32 * scalar_times_2 - 1.0;
-                            let y = y as f32 * scalar_times_2 - 1.0;
-
-                            cache.values[i] = sampler.sample([x, y, z]);
+                    Dimension::D3 => {
+                        if let Some(sampler) = config.sampler3() {
+                            sample(&mut cache.values, size, |x, y| sampler.sample([x, y, z]));
+                        }
+                    }
+                    Dimension::D4 => {
+                        if let Some(sampler) = config.sampler4() {
+                            sample(&mut cache.values, size, |x, y| sampler.sample([x, y, z, w]));
                         }
                     }
                 }
@@ -434,8 +513,42 @@ impl App {
         }
 
         let size = texture.size_vec2();
-        let sized_texture = egui::load::SizedTexture::new(texture, size);
-        ui.add(egui::Image::new(sized_texture).fit_to_exact_size(size));
+
+        if self.show_tiles {
+            egui::Grid::new("image grid")
+                .spacing([0.0; 2])
+                .show(ui, |ui| {
+                    for i in 0..4 {
+                        let sized_texture = egui::load::SizedTexture::new(&mut *texture, size);
+                        let image = ui.add(egui::Image::new(sized_texture).fit_to_exact_size(size));
+
+                        ui.painter()
+                            .circle_filled(image.rect.center(), 40.0, egui::Color32::BLACK);
+
+                        let galley = ui.painter().layout(
+                            i.to_string(),
+                            egui::FontId {
+                                size: 64.0,
+                                family: egui::FontFamily::Proportional,
+                            },
+                            egui::Color32::WHITE,
+                            0.0,
+                        );
+
+                        let pos = image.rect.center() - galley.rect.center();
+
+                        ui.painter()
+                            .galley(egui::pos2(pos.x, pos.y), galley, egui::Color32::RED);
+
+                        if i % 2 != 0 {
+                            ui.end_row();
+                        }
+                    }
+                });
+        } else {
+            let sized_texture = egui::load::SizedTexture::new(&mut *texture, size);
+            ui.add(egui::Image::new(sized_texture).fit_to_exact_size(size));
+        }
     }
 }
 
@@ -529,7 +642,7 @@ pub struct Setting<'v, T, W> {
     widget: fn(&'v mut T) -> W,
 }
 
-impl<'v, T, W> egui::Widget for Setting<'_, T, W>
+impl<T, W> egui::Widget for Setting<'_, T, W>
 where
     W: egui::Widget,
     T: PartialEq,
