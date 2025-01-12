@@ -9,21 +9,25 @@ use noise_functions_config::{
 };
 
 pub struct App {
-    config: Config,
+    settings: Settings,
     texture: egui::TextureHandle,
     texture_size: usize,
     changed: bool,
+    elapsed: Duration,
+    sample_success: bool,
+
+    // we cache the vecs so we don't need to allocate them each update
+    cache: Cache,
+}
+
+struct Settings {
+    config: Config,
     dimension: Dimension,
     z: f32,
     w: f32,
     simd: bool,
-    elapsed: Duration,
     show_tiles: bool,
-    sample_success: bool,
     link_tile_size_to_frequency: bool,
-
-    // we cache the vecs so we don't need to allocate them each update
-    cache: Cache,
 }
 
 #[derive(Default)]
@@ -113,37 +117,42 @@ impl Dimension {
 impl App {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         Self {
-            config: DEFAULT_CONFIG,
+            settings: Settings {
+                config: DEFAULT_CONFIG,
+                dimension: DEFAULT_DIMENSION,
+                z: DEFAULT_Z,
+                w: DEFAULT_W,
+                simd: DEFAULT_SIMD,
+                show_tiles: DEFAULT_SHOW_TILES,
+                link_tile_size_to_frequency: DEFAULT_LINK_TILE_SIZE_TO_FREQUENCY,
+            },
             texture: cc.egui_ctx.load_texture(
                 "noise",
                 egui::ColorImage::example(),
                 egui::TextureOptions::NEAREST,
             ),
             texture_size: DEFAULT_TEXTURE_SIZE,
-            dimension: DEFAULT_DIMENSION,
-            z: DEFAULT_Z,
-            w: DEFAULT_W,
-            simd: DEFAULT_SIMD,
             changed: true,
             elapsed: Duration::from_nanos(0),
             cache: Default::default(),
-            show_tiles: DEFAULT_SHOW_TILES,
             sample_success: true,
-            link_tile_size_to_frequency: DEFAULT_LINK_TILE_SIZE_TO_FREQUENCY,
         }
     }
 
     pub fn settings_panel_contents(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let Self {
-            config,
+            settings:
+                Settings {
+                    config,
+                    z,
+                    w,
+                    simd,
+                    show_tiles,
+                    link_tile_size_to_frequency,
+                    dimension,
+                },
             texture_size,
             changed,
-            dimension,
-            z,
-            w,
-            simd,
-            show_tiles,
-            link_tile_size_to_frequency,
             ..
         } = self;
 
@@ -531,14 +540,18 @@ impl App {
 
     pub fn image_preview_contents(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let Self {
-            config,
+            settings:
+                Settings {
+                    dimension,
+                    z,
+                    w,
+                    simd,
+                    config,
+                    ..
+                },
             texture,
             texture_size,
             changed,
-            dimension,
-            z,
-            w,
-            simd,
             cache,
             ..
         } = self;
@@ -677,7 +690,7 @@ impl App {
 
         let size = texture.size_vec2();
 
-        if self.show_tiles && self.sample_success {
+        if self.settings.show_tiles && self.sample_success {
             egui::Grid::new("image grid")
                 .spacing([0.0; 2])
                 .show(ui, |ui| {
