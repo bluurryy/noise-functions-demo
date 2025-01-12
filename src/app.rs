@@ -20,6 +20,7 @@ pub struct App {
     elapsed: Duration,
     show_tiles: bool,
     sample_success: bool,
+    link_tile_size_to_frequency: bool,
 
     // we cache the vecs so we don't need to allocate them each update
     cache: Cache,
@@ -48,7 +49,7 @@ impl Cache {
 }
 
 const DEFAULT_CONFIG: Config = Config {
-    noise: Noise::NewSimplex,
+    noise: Noise::NewPerlin,
     seed: 0,
     frequency: 3.0,
 
@@ -71,7 +72,7 @@ const DEFAULT_CONFIG: Config = Config {
     distance_return_type: DistanceReturnType::Index0,
 
     // tiling
-    tileable: false,
+    tileable: true,
     tile_width: 3.0,
     tile_height: 3.0,
 };
@@ -81,7 +82,8 @@ const DEFAULT_DIMENSION: Dimension = Dimension::D2;
 const DEFAULT_Z: f32 = 0.0;
 const DEFAULT_W: f32 = 0.0;
 const DEFAULT_SIMD: bool = false;
-const DEFAULT_SHOW_TILES: bool = false;
+const DEFAULT_SHOW_TILES: bool = true;
+const DEFAULT_LINK_TILE_SIZE_TO_FREQUENCY: bool = true;
 
 #[cfg(debug_assertions)]
 const VERSION: &str = concat!("v", env!("CARGO_PKG_VERSION"), " (debug)");
@@ -125,8 +127,9 @@ impl App {
             changed: true,
             elapsed: Duration::from_nanos(0),
             cache: Default::default(),
-            show_tiles: false,
+            show_tiles: DEFAULT_SHOW_TILES,
             sample_success: true,
+            link_tile_size_to_frequency: DEFAULT_LINK_TILE_SIZE_TO_FREQUENCY,
         }
     }
 
@@ -140,6 +143,7 @@ impl App {
             w,
             simd,
             show_tiles,
+            link_tile_size_to_frequency,
             ..
         } = self;
 
@@ -394,10 +398,16 @@ impl App {
                 if matches!(dimension, Dimension::D2)
                     && matches!(
                         config.noise,
-                        Noise::NewPerlin
+                        Noise::CellDistance
+                            | Noise::CellDistanceSq
+                            | Noise::CellValue
+                            | Noise::Perlin
+                            | Noise::Value
+                            | Noise::NewPerlin
                             | Noise::NewValue
                             | Noise::NewCellValue
                             | Noise::NewCellDistance
+                            | Noise::NewSimplex
                     )
                 {
                     setting(
@@ -412,6 +422,22 @@ impl App {
                     );
 
                     if config.tileable {
+                        setting(
+                            changed,
+                            ui,
+                            Setting {
+                                name: "Link Tile Size to Freq.",
+                                value: link_tile_size_to_frequency,
+                                default: DEFAULT_LINK_TILE_SIZE_TO_FREQUENCY,
+                                widget: egui::Checkbox::without_text,
+                            },
+                        );
+
+                        if *link_tile_size_to_frequency {
+                            config.tile_width = config.frequency;
+                            config.tile_height = config.frequency;
+                        }
+
                         setting(
                             changed,
                             ui,
@@ -528,16 +554,33 @@ impl App {
 
             let start = Instant::now();
 
-            fn sample(values: &mut [f32], size: usize, f: impl Fn(f32, f32) -> f32) {
+            fn sample(
+                values: &mut [f32],
+                size: usize,
+                tileable: bool,
+                f: impl Fn(f32, f32) -> f32,
+            ) {
                 let scalar = 1.0 / size as f32;
-                let scalar_times_two = scalar * 2.0;
 
-                for x in 0..size {
-                    for y in 0..size {
-                        let i = x * size + y;
-                        let x = x as f32 * scalar_times_two - 1.0;
-                        let y = y as f32 * scalar_times_two - 1.0;
-                        values[i] = f(x, y);
+                if tileable {
+                    for x in 0..size {
+                        for y in 0..size {
+                            let i = x * size + y;
+                            let x = x as f32 * scalar;
+                            let y = y as f32 * scalar;
+                            values[i] = f(x, y);
+                        }
+                    }
+                } else {
+                    let scalar_times_two = scalar * 2.0;
+
+                    for x in 0..size {
+                        for y in 0..size {
+                            let i = x * size + y;
+                            let x = x as f32 * scalar_times_two - 1.0;
+                            let y = y as f32 * scalar_times_two - 1.0;
+                            values[i] = f(x, y);
+                        }
                     }
                 }
             }
@@ -546,7 +589,7 @@ impl App {
                 match dimension {
                     Dimension::D2 => {
                         if let Some(sampler) = config.sampler2a() {
-                            sample(&mut cache.values, size, |x, y| {
+                            sample(&mut cache.values, size, config.tileable, |x, y| {
                                 sampler.sample([x, y].into())
                             });
                             true
@@ -556,7 +599,7 @@ impl App {
                     }
                     Dimension::D3 => {
                         if let Some(sampler) = config.sampler3a() {
-                            sample(&mut cache.values, size, |x, y| {
+                            sample(&mut cache.values, size, config.tileable, |x, y| {
                                 sampler.sample([x, y, z, 0.0].into())
                             });
                             true
@@ -566,7 +609,7 @@ impl App {
                     }
                     Dimension::D4 => {
                         if let Some(sampler) = config.sampler4a() {
-                            sample(&mut cache.values, size, |x, y| {
+                            sample(&mut cache.values, size, config.tileable, |x, y| {
                                 sampler.sample([x, y, z, w].into())
                             });
                             true
@@ -579,7 +622,9 @@ impl App {
                 match dimension {
                     Dimension::D2 => {
                         if let Some(sampler) = config.sampler2() {
-                            sample(&mut cache.values, size, |x, y| sampler.sample([x, y]));
+                            sample(&mut cache.values, size, config.tileable, |x, y| {
+                                sampler.sample([x, y])
+                            });
                             true
                         } else {
                             false
@@ -587,7 +632,9 @@ impl App {
                     }
                     Dimension::D3 => {
                         if let Some(sampler) = config.sampler3() {
-                            sample(&mut cache.values, size, |x, y| sampler.sample([x, y, z]));
+                            sample(&mut cache.values, size, config.tileable, |x, y| {
+                                sampler.sample([x, y, z])
+                            });
                             true
                         } else {
                             false
@@ -595,7 +642,9 @@ impl App {
                     }
                     Dimension::D4 => {
                         if let Some(sampler) = config.sampler4() {
-                            sample(&mut cache.values, size, |x, y| sampler.sample([x, y, z, w]));
+                            sample(&mut cache.values, size, config.tileable, |x, y| {
+                                sampler.sample([x, y, z, w])
+                            });
                             true
                         } else {
                             false
