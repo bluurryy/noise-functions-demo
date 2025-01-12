@@ -3,7 +3,10 @@ use std::hash::Hash;
 use web_time::{Duration, Instant};
 
 use eframe::egui;
-use noise_functions_config::{Config, Fractal, Improve, Noise};
+use noise_functions_config::{
+    noise_functions::from_fast_noise_2::cell::{CellIndex, DistanceFn, DistanceReturnType},
+    Config, Fractal, Improve, Noise,
+};
 
 pub struct App {
     config: Config,
@@ -16,6 +19,7 @@ pub struct App {
     simd: bool,
     elapsed: Duration,
     show_tiles: bool,
+    sample_success: bool,
 
     // we cache the vecs so we don't need to allocate them each update
     cache: Cache,
@@ -45,16 +49,28 @@ impl Cache {
 
 const DEFAULT_CONFIG: Config = Config {
     noise: Noise::NewCellValue,
+    seed: 0,
+    frequency: 3.0,
+
+    // fractal
     fractal: Fractal::None,
-    improve: Improve::Xy,
     lacunarity: 2.0,
     octaves: 3,
     gain: 0.5,
     ping_pong_strength: 2.0,
     weighted_strength: 0.0,
-    frequency: 3.0,
-    seed: 0,
+
+    // open simplex 2
+    improve: Improve::Xy,
+
+    // cell
     jitter: 1.0,
+    value_index: CellIndex::I0,
+    distance_fn: DistanceFn::Euclidean,
+    distance_indices: [CellIndex::I0, CellIndex::I1],
+    distance_return_type: DistanceReturnType::Index0,
+
+    // tiling
     tileable: false,
     tile_width: 3.0,
     tile_height: 3.0,
@@ -110,6 +126,7 @@ impl App {
             elapsed: Duration::from_nanos(0),
             cache: Default::default(),
             show_tiles: false,
+            sample_success: true,
         }
     }
 
@@ -161,7 +178,7 @@ impl App {
                         name: "Type",
                         value: &mut config.noise,
                         default: DEFAULT_CONFIG.noise,
-                        widget: combo_box!(0, Noise),
+                        widget: combo_box!("noise type", Noise),
                     },
                 );
 
@@ -172,7 +189,7 @@ impl App {
                         name: "Dimension",
                         value: dimension,
                         default: DEFAULT_DIMENSION,
-                        widget: combo_box!(1, Dimension),
+                        widget: combo_box!("dimension", Dimension),
                     },
                 );
 
@@ -186,7 +203,7 @@ impl App {
                             name: "Improve",
                             value: &mut config.improve,
                             default: DEFAULT_CONFIG.improve,
-                            widget: combo_box!(2, Improve),
+                            widget: combo_box!("improve", Improve),
                         },
                     );
                 }
@@ -196,7 +213,8 @@ impl App {
                     Noise::CellValue
                         | Noise::CellDistance
                         | Noise::CellDistanceSq
-                        | Noise::NewCellValue,
+                        | Noise::NewCellValue
+                        | Noise::NewCellDistance,
                 ) {
                     setting(
                         changed,
@@ -208,6 +226,68 @@ impl App {
                             widget: |v| egui::DragValue::new(v).speed(0.02),
                         },
                     );
+
+                    setting(
+                        changed,
+                        ui,
+                        Setting {
+                            name: "Distance Function",
+                            value: &mut config.distance_fn,
+                            default: DEFAULT_CONFIG.distance_fn,
+                            widget: combo_box!("distance fn", DistanceFn),
+                        },
+                    );
+
+                    if matches!(config.noise, Noise::CellValue | Noise::NewCellValue) {
+                        setting(
+                            changed,
+                            ui,
+                            Setting {
+                                name: "Value Index",
+                                value: &mut config.value_index,
+                                default: DEFAULT_CONFIG.value_index,
+                                widget: combo_box!("value index", CellIndex),
+                            },
+                        );
+                    }
+
+                    if matches!(
+                        config.noise,
+                        Noise::CellDistance | Noise::CellDistanceSq | Noise::NewCellDistance
+                    ) {
+                        setting(
+                            changed,
+                            ui,
+                            Setting {
+                                name: "Distance Index 0",
+                                value: &mut config.distance_indices[0],
+                                default: DEFAULT_CONFIG.distance_indices[0],
+                                widget: combo_box!("distance index 0", CellIndex),
+                            },
+                        );
+
+                        setting(
+                            changed,
+                            ui,
+                            Setting {
+                                name: "Distance Index 1",
+                                value: &mut config.distance_indices[1],
+                                default: DEFAULT_CONFIG.distance_indices[1],
+                                widget: combo_box!("distance index 1", CellIndex),
+                            },
+                        );
+
+                        setting(
+                            changed,
+                            ui,
+                            Setting {
+                                name: "Distance Return Type",
+                                value: &mut config.distance_return_type,
+                                default: DEFAULT_CONFIG.distance_return_type,
+                                widget: combo_box!("distance return type", DistanceReturnType),
+                            },
+                        );
+                    }
                 }
 
                 setting_separator(ui);
@@ -219,7 +299,7 @@ impl App {
                         name: "Fractal",
                         value: &mut config.fractal,
                         default: DEFAULT_CONFIG.fractal,
-                        widget: combo_box!(3, Fractal),
+                        widget: combo_box!("fractal", Fractal),
                     },
                 );
 
@@ -306,7 +386,15 @@ impl App {
                     },
                 );
 
-                if matches!(dimension, Dimension::D2) {
+                if matches!(dimension, Dimension::D2)
+                    && matches!(
+                        config.noise,
+                        Noise::NewPerlin
+                            | Noise::NewValue
+                            | Noise::NewCellValue
+                            | Noise::NewCellDistance
+                    )
+                {
                     setting(
                         changed,
                         ui,
@@ -449,13 +537,16 @@ impl App {
                 }
             }
 
-            if *simd {
+            let sampled: bool = if *simd {
                 match dimension {
                     Dimension::D2 => {
                         if let Some(sampler) = config.sampler2a() {
                             sample(&mut cache.values, size, |x, y| {
                                 sampler.sample([x, y].into())
                             });
+                            true
+                        } else {
+                            false
                         }
                     }
                     Dimension::D3 => {
@@ -463,6 +554,9 @@ impl App {
                             sample(&mut cache.values, size, |x, y| {
                                 sampler.sample([x, y, z, 0.0].into())
                             });
+                            true
+                        } else {
+                            false
                         }
                     }
                     Dimension::D4 => {
@@ -470,6 +564,9 @@ impl App {
                             sample(&mut cache.values, size, |x, y| {
                                 sampler.sample([x, y, z, w].into())
                             });
+                            true
+                        } else {
+                            false
                         }
                     }
                 }
@@ -478,21 +575,31 @@ impl App {
                     Dimension::D2 => {
                         if let Some(sampler) = config.sampler2() {
                             sample(&mut cache.values, size, |x, y| sampler.sample([x, y]));
+                            true
+                        } else {
+                            false
                         }
                     }
                     Dimension::D3 => {
                         if let Some(sampler) = config.sampler3() {
                             sample(&mut cache.values, size, |x, y| sampler.sample([x, y, z]));
+                            true
+                        } else {
+                            false
                         }
                     }
                     Dimension::D4 => {
                         if let Some(sampler) = config.sampler4() {
                             sample(&mut cache.values, size, |x, y| sampler.sample([x, y, z, w]));
+                            true
+                        } else {
+                            false
                         }
                     }
                 }
-            }
+            };
 
+            self.sample_success = sampled;
             self.elapsed = start.elapsed();
 
             for x in 0..size {
@@ -516,7 +623,7 @@ impl App {
 
         let size = texture.size_vec2();
 
-        if self.show_tiles {
+        if self.show_tiles && self.sample_success {
             egui::Grid::new("image grid")
                 .spacing([0.0; 2])
                 .show(ui, |ui| {
@@ -527,20 +634,20 @@ impl App {
                         ui.painter()
                             .circle_filled(image.rect.center(), 40.0, egui::Color32::BLACK);
 
-                        let galley = ui.painter().layout(
+                        let galley = ui.painter().layout_no_wrap(
                             i.to_string(),
                             egui::FontId {
                                 size: 64.0,
                                 family: egui::FontFamily::Proportional,
                             },
                             egui::Color32::WHITE,
-                            0.0,
                         );
 
-                        let pos = image.rect.center() - galley.rect.center();
-
-                        ui.painter()
-                            .galley(egui::pos2(pos.x, pos.y), galley, egui::Color32::RED);
+                        ui.painter().galley(
+                            image.rect.center() - galley.rect.size() * 0.5,
+                            galley,
+                            egui::Color32::DEBUG_COLOR,
+                        );
 
                         if i % 2 != 0 {
                             ui.end_row();
@@ -549,7 +656,50 @@ impl App {
                 });
         } else {
             let sized_texture = egui::load::SizedTexture::new(&mut *texture, size);
-            ui.add(egui::Image::new(sized_texture).fit_to_exact_size(size));
+            let image = ui.add(egui::Image::new(sized_texture).fit_to_exact_size(size));
+
+            if !self.sample_success {
+                let image_rect = egui::Rect::from_min_size(image.rect.left_top(), size);
+
+                let text = "dimension not available for this noise type";
+
+                let galley = ui.painter().layout_job(egui::text::LayoutJob {
+                    sections: vec![egui::text::LayoutSection {
+                        leading_space: 0.0,
+                        byte_range: 0..text.len(),
+                        format: egui::text::TextFormat::simple(
+                            egui::FontId {
+                                size: 14.0,
+                                family: egui::FontFamily::Proportional,
+                            },
+                            egui::Color32::WHITE,
+                        ),
+                    }],
+                    text: text.into(),
+                    wrap: egui::text::TextWrapping {
+                        max_width: 200.0,
+                        ..Default::default()
+                    },
+                    halign: egui::Align::Center,
+                    ..Default::default()
+                });
+
+                ui.painter().rect_filled(
+                    egui::Rect::from_center_size(
+                        image_rect.center(),
+                        galley.rect.size() + egui::Vec2::splat(10.0),
+                    ),
+                    5.0,
+                    egui::Color32::BLACK,
+                );
+
+                ui.painter().galley(
+                    egui::Rect::from_center_size(image_rect.center(), galley.rect.size())
+                        .center_top(),
+                    galley,
+                    egui::Color32::DEBUG_COLOR,
+                );
+            }
         }
     }
 }
@@ -663,16 +813,15 @@ where
     }
 }
 
-pub struct SimpleComboBox<'v, I, T: 'static> {
-    id: I,
+pub struct SimpleComboBox<'v, T: 'static> {
+    id: &'static str,
     value: &'v mut T,
     variants: &'static [T],
     to_str: fn(T) -> &'static str,
 }
 
-impl<I, T> egui::Widget for SimpleComboBox<'_, I, T>
+impl<T> egui::Widget for SimpleComboBox<'_, T>
 where
-    I: Hash,
     T: PartialEq + Copy,
 {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
