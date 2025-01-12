@@ -11,7 +11,6 @@ use noise_functions_config::{
 pub struct App {
     settings: Settings,
     texture: egui::TextureHandle,
-    texture_size: usize,
     changed: bool,
     elapsed: Duration,
     sample_success: bool,
@@ -22,6 +21,7 @@ pub struct App {
 
 struct Settings {
     config: Config,
+    texture_size: usize,
     dimension: Dimension,
     z: f32,
     w: f32,
@@ -81,13 +81,16 @@ const DEFAULT_CONFIG: Config = Config {
     tile_height: 3.0,
 };
 
-const DEFAULT_TEXTURE_SIZE: usize = 295;
-const DEFAULT_DIMENSION: Dimension = Dimension::D2;
-const DEFAULT_Z: f32 = 0.0;
-const DEFAULT_W: f32 = 0.0;
-const DEFAULT_SIMD: bool = false;
-const DEFAULT_SHOW_TILES: bool = true;
-const DEFAULT_LINK_TILE_SIZE_TO_FREQUENCY: bool = true;
+const DEFAULT_SETTINGS: Settings = Settings {
+    config: DEFAULT_CONFIG,
+    texture_size: 295,
+    dimension: Dimension::D2,
+    z: 0.0,
+    w: 0.0,
+    simd: false,
+    show_tiles: true,
+    link_tile_size_to_frequency: true,
+};
 
 #[cfg(debug_assertions)]
 const VERSION: &str = concat!("v", env!("CARGO_PKG_VERSION"), " (debug)");
@@ -117,21 +120,12 @@ impl Dimension {
 impl App {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         Self {
-            settings: Settings {
-                config: DEFAULT_CONFIG,
-                dimension: DEFAULT_DIMENSION,
-                z: DEFAULT_Z,
-                w: DEFAULT_W,
-                simd: DEFAULT_SIMD,
-                show_tiles: DEFAULT_SHOW_TILES,
-                link_tile_size_to_frequency: DEFAULT_LINK_TILE_SIZE_TO_FREQUENCY,
-            },
+            settings: DEFAULT_SETTINGS,
             texture: cc.egui_ctx.load_texture(
                 "noise",
                 egui::ColorImage::example(),
                 egui::TextureOptions::NEAREST,
             ),
-            texture_size: DEFAULT_TEXTURE_SIZE,
             changed: true,
             elapsed: Duration::from_nanos(0),
             cache: Default::default(),
@@ -150,8 +144,8 @@ impl App {
                     show_tiles,
                     link_tile_size_to_frequency,
                     dimension,
+                    texture_size,
                 },
-            texture_size,
             changed,
             ..
         } = self;
@@ -201,7 +195,7 @@ impl App {
                     Setting {
                         name: "Dimension",
                         value: dimension,
-                        default: DEFAULT_DIMENSION,
+                        default: DEFAULT_SETTINGS.dimension,
                         widget: combo_box!("dimension", Dimension),
                     },
                 );
@@ -437,7 +431,7 @@ impl App {
                             Setting {
                                 name: "Link Tile Size to Freq.",
                                 value: link_tile_size_to_frequency,
-                                default: DEFAULT_LINK_TILE_SIZE_TO_FREQUENCY,
+                                default: DEFAULT_SETTINGS.link_tile_size_to_frequency,
                                 widget: egui::Checkbox::without_text,
                             },
                         );
@@ -479,7 +473,7 @@ impl App {
                     Setting {
                         name: "Texture Size",
                         value: texture_size,
-                        default: DEFAULT_TEXTURE_SIZE,
+                        default: DEFAULT_SETTINGS.texture_size,
                         widget: |v| egui::DragValue::new(v).range(0..=1024),
                     },
                 );
@@ -491,7 +485,7 @@ impl App {
                         Setting {
                             name: "Z",
                             value: z,
-                            default: DEFAULT_Z,
+                            default: DEFAULT_SETTINGS.z,
                             widget: |v| egui::DragValue::new(v).speed(0.002),
                         },
                     );
@@ -504,7 +498,7 @@ impl App {
                         Setting {
                             name: "W",
                             value: w,
-                            default: DEFAULT_W,
+                            default: DEFAULT_SETTINGS.w,
                             widget: |v| egui::DragValue::new(v).speed(0.002),
                         },
                     );
@@ -517,7 +511,7 @@ impl App {
                         Setting {
                             name: "Show Tiles",
                             value: show_tiles,
-                            default: DEFAULT_SHOW_TILES,
+                            default: DEFAULT_SETTINGS.show_tiles,
                             widget: egui::Checkbox::without_text,
                         },
                     );
@@ -529,7 +523,7 @@ impl App {
                     Setting {
                         name: "Simd",
                         value: simd,
-                        default: DEFAULT_SIMD,
+                        default: DEFAULT_SETTINGS.simd,
                         widget: egui::Checkbox::without_text,
                     },
                 );
@@ -547,10 +541,10 @@ impl App {
                     w,
                     simd,
                     config,
+                    texture_size,
                     ..
                 },
             texture,
-            texture_size,
             changed,
             cache,
             ..
