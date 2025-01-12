@@ -23,6 +23,8 @@ struct Settings {
     config: Config,
     texture_size: usize,
     dimension: Dimension,
+    x: f32,
+    y: f32,
     z: f32,
     w: f32,
     simd: bool,
@@ -85,6 +87,8 @@ const DEFAULT_SETTINGS: Settings = Settings {
     config: DEFAULT_CONFIG,
     texture_size: 295,
     dimension: Dimension::D2,
+    x: 0.0,
+    y: 0.0,
     z: 0.0,
     w: 0.0,
     simd: false,
@@ -138,6 +142,8 @@ impl App {
             settings:
                 Settings {
                     config,
+                    x,
+                    y,
                     z,
                     w,
                     simd,
@@ -478,6 +484,28 @@ impl App {
                     },
                 );
 
+                setting(
+                    changed,
+                    ui,
+                    Setting {
+                        name: "X",
+                        value: x,
+                        default: DEFAULT_SETTINGS.x,
+                        widget: |v| egui::DragValue::new(v).speed(0.002),
+                    },
+                );
+
+                setting(
+                    changed,
+                    ui,
+                    Setting {
+                        name: "Y",
+                        value: y,
+                        default: DEFAULT_SETTINGS.y,
+                        widget: |v| egui::DragValue::new(v).speed(0.002),
+                    },
+                );
+
                 if matches!(dimension, Dimension::D3 | Dimension::D4) {
                     setting(
                         changed,
@@ -534,16 +562,7 @@ impl App {
 
     pub fn image_preview_contents(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let Self {
-            settings:
-                Settings {
-                    dimension,
-                    z,
-                    w,
-                    simd,
-                    config,
-                    texture_size,
-                    ..
-                },
+            settings,
             texture,
             changed,
             cache,
@@ -553,28 +572,31 @@ impl App {
         if *changed {
             *changed = false;
 
-            let size = *texture_size;
-            let z = *z;
-            let w = *w;
+            let size = settings.texture_size;
+            let z = settings.z;
+            let w = settings.w;
 
             cache.resize(size * size);
 
             let start = Instant::now();
 
-            fn sample(
-                values: &mut [f32],
-                size: usize,
-                tileable: bool,
-                f: impl Fn(f32, f32) -> f32,
-            ) {
+            fn sample(values: &mut [f32], settings: &Settings, f: impl Fn(f32, f32) -> f32) {
+                let Settings {
+                    config: Config { tileable, .. },
+                    texture_size: size,
+                    x: x_shift,
+                    y: y_shift,
+                    ..
+                } = *settings;
+
                 let scalar = 1.0 / size as f32;
 
                 if tileable {
                     for x in 0..size {
                         for y in 0..size {
                             let i = x * size + y;
-                            let x = x as f32 * scalar;
-                            let y = y as f32 * scalar;
+                            let x = x as f32 * scalar + x_shift;
+                            let y = y as f32 * scalar + y_shift;
                             values[i] = f(x, y);
                         }
                     }
@@ -584,19 +606,19 @@ impl App {
                     for x in 0..size {
                         for y in 0..size {
                             let i = x * size + y;
-                            let x = x as f32 * scalar_times_two - 1.0;
-                            let y = y as f32 * scalar_times_two - 1.0;
+                            let x = x as f32 * scalar_times_two - 1.0 + x_shift;
+                            let y = y as f32 * scalar_times_two - 1.0 + y_shift;
                             values[i] = f(x, y);
                         }
                     }
                 }
             }
 
-            let sampled: bool = if *simd {
-                match dimension {
+            let sampled: bool = if settings.simd {
+                match settings.dimension {
                     Dimension::D2 => {
-                        if let Some(sampler) = config.sampler2a() {
-                            sample(&mut cache.values, size, config.tileable, |x, y| {
+                        if let Some(sampler) = settings.config.sampler2a() {
+                            sample(&mut cache.values, settings, |x, y| {
                                 sampler.sample([x, y].into())
                             });
                             true
@@ -605,8 +627,8 @@ impl App {
                         }
                     }
                     Dimension::D3 => {
-                        if let Some(sampler) = config.sampler3a() {
-                            sample(&mut cache.values, size, config.tileable, |x, y| {
+                        if let Some(sampler) = settings.config.sampler3a() {
+                            sample(&mut cache.values, settings, |x, y| {
                                 sampler.sample([x, y, z, 0.0].into())
                             });
                             true
@@ -615,8 +637,8 @@ impl App {
                         }
                     }
                     Dimension::D4 => {
-                        if let Some(sampler) = config.sampler4a() {
-                            sample(&mut cache.values, size, config.tileable, |x, y| {
+                        if let Some(sampler) = settings.config.sampler4a() {
+                            sample(&mut cache.values, settings, |x, y| {
                                 sampler.sample([x, y, z, w].into())
                             });
                             true
@@ -626,20 +648,18 @@ impl App {
                     }
                 }
             } else {
-                match dimension {
+                match settings.dimension {
                     Dimension::D2 => {
-                        if let Some(sampler) = config.sampler2() {
-                            sample(&mut cache.values, size, config.tileable, |x, y| {
-                                sampler.sample([x, y])
-                            });
+                        if let Some(sampler) = settings.config.sampler2() {
+                            sample(&mut cache.values, settings, |x, y| sampler.sample([x, y]));
                             true
                         } else {
                             false
                         }
                     }
                     Dimension::D3 => {
-                        if let Some(sampler) = config.sampler3() {
-                            sample(&mut cache.values, size, config.tileable, |x, y| {
+                        if let Some(sampler) = settings.config.sampler3() {
+                            sample(&mut cache.values, settings, |x, y| {
                                 sampler.sample([x, y, z])
                             });
                             true
@@ -648,8 +668,8 @@ impl App {
                         }
                     }
                     Dimension::D4 => {
-                        if let Some(sampler) = config.sampler4() {
-                            sample(&mut cache.values, size, config.tileable, |x, y| {
+                        if let Some(sampler) = settings.config.sampler4() {
+                            sample(&mut cache.values, settings, |x, y| {
                                 sampler.sample([x, y, z, w])
                             });
                             true
@@ -675,7 +695,7 @@ impl App {
 
             texture.set(
                 egui::ColorImage {
-                    size: [*texture_size; 2],
+                    size: [settings.texture_size; 2],
                     pixels: cache.pixels.clone(),
                 },
                 egui::TextureOptions::NEAREST,
