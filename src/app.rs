@@ -48,7 +48,7 @@ impl Cache {
 }
 
 const DEFAULT_CONFIG: Config = Config {
-    noise: Noise::NewCellValue,
+    noise: Noise::NewSimplex,
     seed: 0,
     frequency: 3.0,
 
@@ -77,7 +77,7 @@ const DEFAULT_CONFIG: Config = Config {
 };
 
 const DEFAULT_TEXTURE_SIZE: usize = 295;
-const DEFAULT_DIMENSION: Dimension = Dimension::D3;
+const DEFAULT_DIMENSION: Dimension = Dimension::D2;
 const DEFAULT_Z: f32 = 0.0;
 const DEFAULT_W: f32 = 0.0;
 const DEFAULT_SIMD: bool = false;
@@ -193,8 +193,13 @@ impl App {
                     },
                 );
 
-                if matches!(config.noise, Noise::OpenSimplex2 | Noise::OpenSimplex2s)
-                    && matches!(dimension, Dimension::D3)
+                if matches!(
+                    config.noise,
+                    Noise::OpenSimplex2
+                        | Noise::OpenSimplex2s
+                        | Noise::NewOpenSimplex2
+                        | Noise::NewOpenSimplex2s
+                ) && matches!(dimension, Dimension::D3)
                 {
                     setting(
                         changed,
