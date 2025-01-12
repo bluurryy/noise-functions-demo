@@ -592,9 +592,9 @@ impl App {
                 let scalar = 1.0 / size as f32;
 
                 if tileable {
-                    for x in 0..size {
-                        for y in 0..size {
-                            let i = x * size + y;
+                    for y in 0..size {
+                        for x in 0..size {
+                            let i = y * size + x;
                             let x = x as f32 * scalar + x_shift;
                             let y = y as f32 * scalar + y_shift;
                             values[i] = f(x, y);
@@ -603,9 +603,9 @@ impl App {
                 } else {
                     let scalar_times_two = scalar * 2.0;
 
-                    for x in 0..size {
-                        for y in 0..size {
-                            let i = x * size + y;
+                    for y in 0..size {
+                        for x in 0..size {
+                            let i = y * size + x;
                             let x = x as f32 * scalar_times_two - 1.0 + x_shift;
                             let y = y as f32 * scalar_times_two - 1.0 + y_shift;
                             values[i] = f(x, y);
