@@ -44,7 +44,7 @@ impl Cache {
 }
 
 const DEFAULT_CONFIG: Config = Config {
-    noise: Noise::NewValue,
+    noise: Noise::NewCellValue,
     fractal: Fractal::None,
     improve: Improve::Xy,
     lacunarity: 2.0,
@@ -61,7 +61,7 @@ const DEFAULT_CONFIG: Config = Config {
 };
 
 const DEFAULT_TEXTURE_SIZE: usize = 295;
-const DEFAULT_DIMENSION: Dimension = Dimension::D2;
+const DEFAULT_DIMENSION: Dimension = Dimension::D3;
 const DEFAULT_Z: f32 = 0.0;
 const DEFAULT_W: f32 = 0.0;
 const DEFAULT_SIMD: bool = false;
@@ -159,7 +159,6 @@ impl App {
                     ui,
                     Setting {
                         name: "Type",
-                        enabled: true,
                         value: &mut config.noise,
                         default: DEFAULT_CONFIG.noise,
                         widget: combo_box!(0, Noise),
@@ -171,40 +170,45 @@ impl App {
                     ui,
                     Setting {
                         name: "Dimension",
-                        enabled: true,
                         value: dimension,
                         default: DEFAULT_DIMENSION,
                         widget: combo_box!(1, Dimension),
                     },
                 );
 
-                setting(
-                    changed,
-                    ui,
-                    Setting {
-                        name: "Improve",
-                        enabled: matches!(config.noise, Noise::OpenSimplex2 | Noise::OpenSimplex2s)
-                            && !matches!(*dimension, Dimension::D2),
-                        value: &mut config.improve,
-                        default: DEFAULT_CONFIG.improve,
-                        widget: combo_box!(2, Improve),
-                    },
-                );
+                if matches!(config.noise, Noise::OpenSimplex2 | Noise::OpenSimplex2s)
+                    && matches!(dimension, Dimension::D3)
+                {
+                    setting(
+                        changed,
+                        ui,
+                        Setting {
+                            name: "Improve",
+                            value: &mut config.improve,
+                            default: DEFAULT_CONFIG.improve,
+                            widget: combo_box!(2, Improve),
+                        },
+                    );
+                }
 
-                setting(
-                    changed,
-                    ui,
-                    Setting {
-                        name: "Jitter",
-                        enabled: matches!(
-                            config.noise,
-                            Noise::CellValue | Noise::CellDistance | Noise::CellDistanceSq
-                        ),
-                        value: &mut config.jitter,
-                        default: DEFAULT_CONFIG.jitter,
-                        widget: |v| egui::DragValue::new(v).speed(0.02),
-                    },
-                );
+                if matches!(
+                    config.noise,
+                    Noise::CellValue
+                        | Noise::CellDistance
+                        | Noise::CellDistanceSq
+                        | Noise::NewCellValue,
+                ) {
+                    setting(
+                        changed,
+                        ui,
+                        Setting {
+                            name: "Jitter",
+                            value: &mut config.jitter,
+                            default: DEFAULT_CONFIG.jitter,
+                            widget: |v| egui::DragValue::new(v).speed(0.02),
+                        },
+                    );
+                }
 
                 setting_separator(ui);
 
@@ -213,72 +217,70 @@ impl App {
                     ui,
                     Setting {
                         name: "Fractal",
-                        enabled: true,
                         value: &mut config.fractal,
                         default: DEFAULT_CONFIG.fractal,
                         widget: combo_box!(3, Fractal),
                     },
                 );
 
-                setting(
-                    changed,
-                    ui,
-                    Setting {
-                        name: "Octaves",
-                        enabled: config.fractal != Fractal::None,
-                        value: &mut config.octaves,
-                        default: DEFAULT_CONFIG.octaves,
-                        widget: |v| egui::DragValue::new(v).speed(0.02).range(1..=8),
-                    },
-                );
+                if config.fractal != Fractal::None {
+                    setting(
+                        changed,
+                        ui,
+                        Setting {
+                            name: "Octaves",
+                            value: &mut config.octaves,
+                            default: DEFAULT_CONFIG.octaves,
+                            widget: |v| egui::DragValue::new(v).speed(0.02).range(1..=8),
+                        },
+                    );
 
-                setting(
-                    changed,
-                    ui,
-                    Setting {
-                        name: "Lacunarity",
-                        enabled: config.fractal != Fractal::None,
-                        value: &mut config.lacunarity,
-                        default: DEFAULT_CONFIG.lacunarity,
-                        widget: |v| egui::DragValue::new(v).speed(0.02),
-                    },
-                );
+                    setting(
+                        changed,
+                        ui,
+                        Setting {
+                            name: "Lacunarity",
+                            value: &mut config.lacunarity,
+                            default: DEFAULT_CONFIG.lacunarity,
+                            widget: |v| egui::DragValue::new(v).speed(0.02),
+                        },
+                    );
 
-                setting(
-                    changed,
-                    ui,
-                    Setting {
-                        name: "Gain",
-                        enabled: config.fractal != Fractal::None,
-                        value: &mut config.gain,
-                        default: DEFAULT_CONFIG.gain,
-                        widget: |v| egui::DragValue::new(v).speed(0.02),
-                    },
-                );
+                    setting(
+                        changed,
+                        ui,
+                        Setting {
+                            name: "Gain",
+                            value: &mut config.gain,
+                            default: DEFAULT_CONFIG.gain,
+                            widget: |v| egui::DragValue::new(v).speed(0.02),
+                        },
+                    );
 
-                setting(
-                    changed,
-                    ui,
-                    Setting {
-                        name: "Weighted Strength",
-                        enabled: config.fractal != Fractal::None,
-                        value: &mut config.weighted_strength,
-                        default: DEFAULT_CONFIG.weighted_strength,
-                        widget: |v| egui::Slider::new(v, 0.0..=1.0),
-                    },
-                );
+                    setting(
+                        changed,
+                        ui,
+                        Setting {
+                            name: "Weighted Strength",
+                            value: &mut config.weighted_strength,
+                            default: DEFAULT_CONFIG.weighted_strength,
+                            widget: |v| egui::Slider::new(v, 0.0..=1.0),
+                        },
+                    );
 
-                setting(
-                    changed,
-                    ui,
-                    Setting {
-                        name: "Ping Pong Strength",
-                        enabled: config.fractal == Fractal::PingPong,
-                        value: &mut config.ping_pong_strength,
-                        default: DEFAULT_CONFIG.ping_pong_strength,
-                        widget: |v| egui::Slider::new(v, 0.5..=3.0),
-                    },
-                );
+                    if config.fractal == Fractal::PingPong {
+                        setting(
+                            changed,
+                            ui,
+                            Setting {
+                                name: "Ping Pong Strength",
+                                value: &mut config.ping_pong_strength,
+                                default: DEFAULT_CONFIG.ping_pong_strength,
+                                widget: |v| egui::Slider::new(v, 0.5..=3.0),
+                            },
+                        );
+                    }
+                }
 
                 setting_separator(ui);
 
@@ -287,7 +289,6 @@ impl App {
                     ui,
                     Setting {
                         name: "Frequency",
-                        enabled: true,
                         value: &mut config.frequency,
                         default: DEFAULT_CONFIG.frequency,
                         widget: |v| egui::DragValue::new(v).speed(0.02),
@@ -299,48 +300,48 @@ impl App {
                     ui,
                     Setting {
                         name: "Seed",
-                        enabled: true,
                         value: &mut config.seed,
                         default: DEFAULT_CONFIG.seed,
                         widget: |v| egui::DragValue::new(v).speed(0.1),
                     },
                 );
 
-                setting(
-                    changed,
-                    ui,
-                    Setting {
-                        name: "Tileable",
-                        enabled: matches!(dimension, Dimension::D2),
-                        value: &mut config.tileable,
-                        default: DEFAULT_CONFIG.tileable,
-                        widget: egui::Checkbox::without_text,
-                    },
-                );
+                if matches!(dimension, Dimension::D2) {
+                    setting(
+                        changed,
+                        ui,
+                        Setting {
+                            name: "Tileable",
+                            value: &mut config.tileable,
+                            default: DEFAULT_CONFIG.tileable,
+                            widget: egui::Checkbox::without_text,
+                        },
+                    );
 
-                setting(
-                    changed,
-                    ui,
-                    Setting {
-                        name: "Tile Width",
-                        enabled: config.tileable,
-                        value: &mut config.tile_width,
-                        default: DEFAULT_CONFIG.tile_width,
-                        widget: |v| egui::DragValue::new(v).speed(0.02),
-                    },
-                );
+                    if config.tileable {
+                        setting(
+                            changed,
+                            ui,
+                            Setting {
+                                name: "Tile Width",
+                                value: &mut config.tile_width,
+                                default: DEFAULT_CONFIG.tile_width,
+                                widget: |v| egui::DragValue::new(v).speed(0.02),
+                            },
+                        );
 
-                setting(
-                    changed,
-                    ui,
-                    Setting {
-                        name: "Tile Height",
-                        enabled: config.tileable,
-                        value: &mut config.tile_height,
-                        default: DEFAULT_CONFIG.tile_height,
-                        widget: |v| egui::DragValue::new(v).speed(0.02),
-                    },
-                );
+                        setting(
+                            changed,
+                            ui,
+                            Setting {
+                                name: "Tile Height",
+                                value: &mut config.tile_height,
+                                default: DEFAULT_CONFIG.tile_height,
+                                widget: |v| egui::DragValue::new(v).speed(0.02),
+                            },
+                        );
+                    }
+                }
 
                 setting_separator(ui);
 
@@ -349,55 +350,56 @@ impl App {
                     ui,
                     Setting {
                         name: "Texture Size",
-                        enabled: true,
                         value: texture_size,
                         default: DEFAULT_TEXTURE_SIZE,
                         widget: |v| egui::DragValue::new(v).range(0..=1024),
                     },
                 );
 
-                setting(
-                    changed,
-                    ui,
-                    Setting {
-                        name: "Z",
-                        enabled: matches!(*dimension, Dimension::D3 | Dimension::D4),
-                        value: z,
-                        default: DEFAULT_Z,
-                        widget: |v| egui::DragValue::new(v).speed(0.002),
-                    },
-                );
+                if matches!(dimension, Dimension::D3 | Dimension::D4) {
+                    setting(
+                        changed,
+                        ui,
+                        Setting {
+                            name: "Z",
+                            value: z,
+                            default: DEFAULT_Z,
+                            widget: |v| egui::DragValue::new(v).speed(0.002),
+                        },
+                    );
+                }
 
-                setting(
-                    changed,
-                    ui,
-                    Setting {
-                        name: "W",
-                        enabled: matches!(*dimension, Dimension::D4),
-                        value: w,
-                        default: DEFAULT_W,
-                        widget: |v| egui::DragValue::new(v).speed(0.002),
-                    },
-                );
+                if matches!(dimension, Dimension::D4) {
+                    setting(
+                        changed,
+                        ui,
+                        Setting {
+                            name: "W",
+                            value: w,
+                            default: DEFAULT_W,
+                            widget: |v| egui::DragValue::new(v).speed(0.002),
+                        },
+                    );
+                }
 
-                setting(
-                    changed,
-                    ui,
-                    Setting {
-                        name: "Show Tiles",
-                        enabled: true,
-                        value: show_tiles,
-                        default: DEFAULT_SHOW_TILES,
-                        widget: egui::Checkbox::without_text,
-                    },
-                );
+                if matches!(dimension, Dimension::D2) && config.tileable {
+                    setting(
+                        changed,
+                        ui,
+                        Setting {
+                            name: "Show Tiles",
+                            value: show_tiles,
+                            default: DEFAULT_SHOW_TILES,
+                            widget: egui::Checkbox::without_text,
+                        },
+                    );
+                }
 
                 setting(
                     changed,
                     ui,
                     Setting {
                         name: "Simd",
-                        enabled: true,
                         value: simd,
                         default: DEFAULT_SIMD,
                         widget: egui::Checkbox::without_text,
@@ -636,7 +638,6 @@ fn setting_separator(ui: &mut egui::Ui) {
 
 pub struct Setting<'v, T, W> {
     name: &'static str,
-    enabled: bool,
     value: &'v mut T,
     default: T,
     widget: fn(&'v mut T) -> W,
@@ -650,13 +651,12 @@ where
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         let Setting {
             name,
-            enabled,
             value,
             default,
             widget,
         } = self;
 
-        ui.add_enabled(enabled, egui::Label::new(name).selectable(false));
+        ui.add(egui::Label::new(name).selectable(false));
         let response = ui.add(Reset::new(value, default)) | ui.add(widget(value));
         ui.end_row();
         response
