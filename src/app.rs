@@ -382,7 +382,7 @@ impl App {
 
                 setting_separator(ui);
 
-                setting(
+                if setting(
                     changed,
                     ui,
                     Setting {
@@ -391,7 +391,11 @@ impl App {
                         default: DEFAULT_CONFIG.frequency,
                         widget: |v| egui::DragValue::new(v).speed(0.02),
                     },
-                );
+                ) && *link_tile_size_to_frequency
+                {
+                    config.tile_width = config.frequency;
+                    config.tile_height = config.frequency;
+                }
 
                 setting(
                     changed,
@@ -442,12 +446,7 @@ impl App {
                             },
                         );
 
-                        if *link_tile_size_to_frequency {
-                            config.tile_width = config.frequency;
-                            config.tile_height = config.frequency;
-                        }
-
-                        setting(
+                        if setting(
                             changed,
                             ui,
                             Setting {
@@ -456,9 +455,13 @@ impl App {
                                 default: DEFAULT_CONFIG.tile_width,
                                 widget: |v| egui::DragValue::new(v).speed(0.02),
                             },
-                        );
+                        ) && *link_tile_size_to_frequency
+                        {
+                            config.tile_height = config.tile_width;
+                            config.frequency = config.tile_width;
+                        }
 
-                        setting(
+                        if setting(
                             changed,
                             ui,
                             Setting {
@@ -467,7 +470,11 @@ impl App {
                                 default: DEFAULT_CONFIG.tile_height,
                                 widget: |v| egui::DragValue::new(v).speed(0.02),
                             },
-                        );
+                        ) && *link_tile_size_to_frequency
+                        {
+                            config.tile_width = config.tile_height;
+                            config.frequency = config.tile_height;
+                        }
                     }
                 }
 
@@ -856,8 +863,10 @@ impl eframe::App for App {
     }
 }
 
-fn setting(changed: &mut bool, ui: &mut egui::Ui, setting: impl egui::Widget) {
-    *changed |= ui.add(setting).changed();
+fn setting(changed: &mut bool, ui: &mut egui::Ui, setting: impl egui::Widget) -> bool {
+    let setting_changed = ui.add(setting).changed();
+    *changed |= setting_changed;
+    setting_changed
 }
 
 fn setting_separator(ui: &mut egui::Ui) {
