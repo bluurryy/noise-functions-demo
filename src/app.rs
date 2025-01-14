@@ -55,7 +55,7 @@ impl Cache {
 }
 
 const DEFAULT_CONFIG: Config = Config {
-    noise: Noise::Simplex,
+    noise: Noise::Perlin,
     seed: 0,
     frequency: 3.0,
 
@@ -78,7 +78,7 @@ const DEFAULT_CONFIG: Config = Config {
     distance_return_type: DistanceReturnType::Index0,
 
     // tiling
-    tileable: true,
+    tileable: false,
     tile_width: 3.0,
     tile_height: 3.0,
 };
@@ -707,7 +707,7 @@ impl App {
 
         let size = texture.size_vec2();
 
-        if self.settings.show_tiles && self.sample_success {
+        if self.settings.show_tiles && self.settings.config.tileable && self.sample_success {
             egui::Grid::new("image grid")
                 .spacing([0.0; 2])
                 .show(ui, |ui| {
