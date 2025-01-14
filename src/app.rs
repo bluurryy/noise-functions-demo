@@ -55,7 +55,7 @@ impl Cache {
 }
 
 const DEFAULT_CONFIG: Config = Config {
-    noise: Noise::NewPerlin,
+    noise: Noise::Simplex,
     seed: 0,
     frequency: 3.0,
 
@@ -206,13 +206,8 @@ impl App {
                     },
                 );
 
-                if matches!(
-                    config.noise,
-                    Noise::OpenSimplex2
-                        | Noise::OpenSimplex2s
-                        | Noise::NewOpenSimplex2
-                        | Noise::NewOpenSimplex2s
-                ) && matches!(dimension, Dimension::D3)
+                if matches!(config.noise, Noise::OpenSimplex2 | Noise::OpenSimplex2s)
+                    && matches!(dimension, Dimension::D3)
                 {
                     setting(
                         changed,
@@ -230,9 +225,9 @@ impl App {
                     config.noise,
                     Noise::CellValue
                         | Noise::CellDistance
-                        | Noise::CellDistanceSq
-                        | Noise::NewCellValue
-                        | Noise::NewCellDistance,
+                        | Noise::FastCellValue
+                        | Noise::FastCellDistance
+                        | Noise::FastCellDistanceSq
                 ) {
                     setting(
                         changed,
@@ -256,7 +251,7 @@ impl App {
                         },
                     );
 
-                    if matches!(config.noise, Noise::CellValue | Noise::NewCellValue) {
+                    if matches!(config.noise, Noise::CellValue | Noise::FastCellValue) {
                         setting(
                             changed,
                             ui,
@@ -271,7 +266,7 @@ impl App {
 
                     if matches!(
                         config.noise,
-                        Noise::CellDistance | Noise::CellDistanceSq | Noise::NewCellDistance
+                        Noise::CellDistance | Noise::FastCellDistance | Noise::FastCellDistanceSq
                     ) {
                         setting(
                             changed,
@@ -411,16 +406,14 @@ impl App {
                 if matches!(dimension, Dimension::D2)
                     && matches!(
                         config.noise,
-                        Noise::CellDistance
-                            | Noise::CellDistanceSq
-                            | Noise::CellValue
+                        Noise::Value
                             | Noise::Perlin
-                            | Noise::Value
-                            | Noise::NewPerlin
-                            | Noise::NewValue
-                            | Noise::NewCellValue
-                            | Noise::NewCellDistance
-                            | Noise::NewSimplex
+                            | Noise::Simplex
+                            | Noise::CellValue
+                            | Noise::CellDistance
+                            | Noise::FastCellValue
+                            | Noise::FastCellDistance
+                            | Noise::FastCellDistanceSq
                     )
                 {
                     setting(
