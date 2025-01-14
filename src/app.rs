@@ -403,71 +403,57 @@ impl App {
                     },
                 );
 
-                if matches!(dimension, Dimension::D2)
-                    && matches!(
-                        config.noise,
-                        Noise::Value
-                            | Noise::Perlin
-                            | Noise::Simplex
-                            | Noise::CellValue
-                            | Noise::CellDistance
-                            | Noise::FastCellValue
-                            | Noise::FastCellDistance
-                            | Noise::FastCellDistanceSq
-                    )
-                {
+                setting(
+                    changed,
+                    ui,
+                    Setting {
+                        name: "Tileable",
+                        value: &mut config.tileable,
+                        default: DEFAULT_CONFIG.tileable,
+                        widget: egui::Checkbox::without_text,
+                    },
+                );
+
+                if config.tileable {
                     setting(
                         changed,
                         ui,
                         Setting {
-                            name: "Tileable",
-                            value: &mut config.tileable,
-                            default: DEFAULT_CONFIG.tileable,
+                            name: "Link Tile Size to Freq.",
+                            value: link_tile_size_to_frequency,
+                            default: DEFAULT_SETTINGS.link_tile_size_to_frequency,
                             widget: egui::Checkbox::without_text,
                         },
                     );
 
-                    if config.tileable {
-                        setting(
-                            changed,
-                            ui,
-                            Setting {
-                                name: "Link Tile Size to Freq.",
-                                value: link_tile_size_to_frequency,
-                                default: DEFAULT_SETTINGS.link_tile_size_to_frequency,
-                                widget: egui::Checkbox::without_text,
-                            },
-                        );
+                    if setting(
+                        changed,
+                        ui,
+                        Setting {
+                            name: "Tile Width",
+                            value: &mut config.tile_width,
+                            default: DEFAULT_CONFIG.tile_width,
+                            widget: |v| egui::DragValue::new(v).speed(0.02),
+                        },
+                    ) && *link_tile_size_to_frequency
+                    {
+                        config.tile_height = config.tile_width;
+                        config.frequency = config.tile_width;
+                    }
 
-                        if setting(
-                            changed,
-                            ui,
-                            Setting {
-                                name: "Tile Width",
-                                value: &mut config.tile_width,
-                                default: DEFAULT_CONFIG.tile_width,
-                                widget: |v| egui::DragValue::new(v).speed(0.02),
-                            },
-                        ) && *link_tile_size_to_frequency
-                        {
-                            config.tile_height = config.tile_width;
-                            config.frequency = config.tile_width;
-                        }
-
-                        if setting(
-                            changed,
-                            ui,
-                            Setting {
-                                name: "Tile Height",
-                                value: &mut config.tile_height,
-                                default: DEFAULT_CONFIG.tile_height,
-                                widget: |v| egui::DragValue::new(v).speed(0.02),
-                            },
-                        ) && *link_tile_size_to_frequency
-                        {
-                            config.tile_width = config.tile_height;
-                            config.frequency = config.tile_height;
-                        }
+                    if setting(
+                        changed,
+                        ui,
+                        Setting {
+                            name: "Tile Height",
+                            value: &mut config.tile_height,
+                            default: DEFAULT_CONFIG.tile_height,
+                            widget: |v| egui::DragValue::new(v).speed(0.02),
+                        },
+                    ) && *link_tile_size_to_frequency
+                    {
+                        config.tile_width = config.tile_height;
+                        config.frequency = config.tile_height;
                     }
                 }
 
@@ -742,7 +728,7 @@ impl App {
             if !self.sample_success {
                 let image_rect = egui::Rect::from_min_size(image.rect.left_top(), size);
 
-                let text = "dimension not available for this noise type";
+                let text = "dimension/tileable not available for this noise type";
 
                 let galley = ui.painter().layout_job(egui::text::LayoutJob {
                     sections: vec![egui::text::LayoutSection {
