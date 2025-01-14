@@ -673,7 +673,22 @@ impl App {
                 for y in 0..size {
                     let i = x * size + y;
                     let value = cache.values[i];
-                    let value_255 = ((value * 0.5 + 0.5) * 255.0) as u8;
+
+                    let value_01 = match settings.config.noise {
+                        Noise::Value
+                        | Noise::ValueCubic
+                        | Noise::Perlin
+                        | Noise::Simplex
+                        | Noise::OpenSimplex2
+                        | Noise::OpenSimplex2s
+                        | Noise::CellValue
+                        | Noise::FastCellValue => value * 0.5 + 0.5,
+                        Noise::CellDistance
+                        | Noise::FastCellDistance
+                        | Noise::FastCellDistanceSq => value,
+                    };
+
+                    let value_255 = (value_01 * 255.0) as u8;
                     let color = egui::Color32::from_gray(value_255);
                     cache.pixels[i] = color;
                 }
