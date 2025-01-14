@@ -239,7 +239,9 @@ impl App {
                             widget: |v| egui::DragValue::new(v).speed(0.02),
                         },
                     );
+                }
 
+                if matches!(config.noise, Noise::CellValue | Noise::CellDistance) {
                     setting(
                         changed,
                         ui,
@@ -799,6 +801,7 @@ impl eframe::App for App {
 
         egui::SidePanel::left("settings_panel")
             .resizable(false)
+            .max_width(325.0)
             .show(ctx, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     ui.add_space(6.0);
