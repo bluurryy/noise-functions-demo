@@ -3,10 +3,7 @@ use std::hash::Hash;
 use web_time::{Duration, Instant};
 
 use eframe::egui;
-use noise_functions_config::{
-    noise_functions::from_fast_noise_2::cell::{CellIndex, DistanceFn, DistanceReturnType},
-    Config, Fractal, Improve, Noise,
-};
+use noise_functions_config::{Config, Improve, Modifier, Noise};
 
 pub struct App {
     settings: Settings,
@@ -59,12 +56,15 @@ const DEFAULT_CONFIG: Config = Config {
     seed: 0,
     frequency: 3.0,
 
+    // modifiers
+    modifier: Modifier::None,
+    triangle_wave_frequency: 2.0,
+
     // fractal
-    fractal: Fractal::None,
+    fractal: false,
     lacunarity: 2.0,
     octaves: 3,
     gain: 0.5,
-    ping_pong_strength: 2.0,
     weighted_strength: 0.0,
 
     // open simplex 2
@@ -72,10 +72,6 @@ const DEFAULT_CONFIG: Config = Config {
 
     // cell
     jitter: 1.0,
-    value_index: CellIndex::I0,
-    distance_fn: DistanceFn::Euclidean,
-    distance_indices: [CellIndex::I0, CellIndex::I1],
-    distance_return_type: DistanceReturnType::Index0,
 
     // tiling
     tileable: false,
@@ -221,14 +217,9 @@ impl App {
                     );
                 }
 
-                if matches!(
-                    config.noise,
-                    Noise::CellValue
-                        | Noise::CellDistance
-                        | Noise::FastCellValue
-                        | Noise::FastCellDistance
-                        | Noise::FastCellDistanceSq
-                ) {
+                if matches!(config.noise, |Noise::CellValue| Noise::CellDistance
+                    | Noise::CellDistanceSq)
+                {
                     setting(
                         changed,
                         ui,
@@ -241,68 +232,30 @@ impl App {
                     );
                 }
 
-                if matches!(config.noise, Noise::CellValue | Noise::CellDistance) {
+                setting_separator(ui);
+
+                setting(
+                    changed,
+                    ui,
+                    Setting {
+                        name: "Modifier",
+                        value: &mut config.modifier,
+                        default: DEFAULT_CONFIG.modifier,
+                        widget: combo_box!("modifier", Modifier),
+                    },
+                );
+
+                if config.modifier == Modifier::TriangleWave {
                     setting(
                         changed,
                         ui,
                         Setting {
-                            name: "Distance Function",
-                            value: &mut config.distance_fn,
-                            default: DEFAULT_CONFIG.distance_fn,
-                            widget: combo_box!("distance fn", DistanceFn),
+                            name: "Triangle Wave Freq.",
+                            value: &mut config.triangle_wave_frequency,
+                            default: DEFAULT_CONFIG.triangle_wave_frequency,
+                            widget: |v| egui::Slider::new(v, 0.5..=3.0),
                         },
                     );
-
-                    if matches!(config.noise, Noise::CellValue | Noise::FastCellValue) {
-                        setting(
-                            changed,
-                            ui,
-                            Setting {
-                                name: "Value Index",
-                                value: &mut config.value_index,
-                                default: DEFAULT_CONFIG.value_index,
-                                widget: combo_box!("value index", CellIndex),
-                            },
-                        );
-                    }
-
-                    if matches!(
-                        config.noise,
-                        Noise::CellDistance | Noise::FastCellDistance | Noise::FastCellDistanceSq
-                    ) {
-                        setting(
-                            changed,
-                            ui,
-                            Setting {
-                                name: "Distance Index 0",
-                                value: &mut config.distance_indices[0],
-                                default: DEFAULT_CONFIG.distance_indices[0],
-                                widget: combo_box!("distance index 0", CellIndex),
-                            },
-                        );
-
-                        setting(
-                            changed,
-                            ui,
-                            Setting {
-                                name: "Distance Index 1",
-                                value: &mut config.distance_indices[1],
-                                default: DEFAULT_CONFIG.distance_indices[1],
-                                widget: combo_box!("distance index 1", CellIndex),
-                            },
-                        );
-
-                        setting(
-                            changed,
-                            ui,
-                            Setting {
-                                name: "Distance Return Type",
-                                value: &mut config.distance_return_type,
-                                default: DEFAULT_CONFIG.distance_return_type,
-                                widget: combo_box!("distance return type", DistanceReturnType),
-                            },
-                        );
-                    }
                 }
 
                 setting_separator(ui);
@@ -314,11 +267,11 @@ impl App {
                         name: "Fractal",
                         value: &mut config.fractal,
                         default: DEFAULT_CONFIG.fractal,
-                        widget: combo_box!("fractal", Fractal),
+                        widget: egui::Checkbox::without_text,
                     },
                 );
 
-                if config.fractal != Fractal::None {
+                if config.fractal {
                     setting(
                         changed,
                         ui,
@@ -362,19 +315,6 @@ impl App {
                             widget: |v| egui::Slider::new(v, 0.0..=1.0),
                         },
                     );
-
-                    if config.fractal == Fractal::PingPong {
-                        setting(
-                            changed,
-                            ui,
-                            Setting {
-                                name: "Ping Pong Strength",
-                                value: &mut config.ping_pong_strength,
-                                default: DEFAULT_CONFIG.ping_pong_strength,
-                                widget: |v| egui::Slider::new(v, 0.5..=3.0),
-                            },
-                        );
-                    }
                 }
 
                 setting_separator(ui);
@@ -675,21 +615,7 @@ impl App {
                 for y in 0..size {
                     let i = x * size + y;
                     let value = cache.values[i];
-
-                    let value_01 = match settings.config.noise {
-                        Noise::Value
-                        | Noise::ValueCubic
-                        | Noise::Perlin
-                        | Noise::Simplex
-                        | Noise::OpenSimplex2
-                        | Noise::OpenSimplex2s
-                        | Noise::CellValue
-                        | Noise::FastCellValue => value * 0.5 + 0.5,
-                        Noise::CellDistance
-                        | Noise::FastCellDistance
-                        | Noise::FastCellDistanceSq => value,
-                    };
-
+                    let value_01 = value * 0.5 + 0.5;
                     let value_255 = (value_01 * 255.0) as u8;
                     let color = egui::Color32::from_gray(value_255);
                     cache.pixels[i] = color;
