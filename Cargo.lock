@@ -1001,17 +1001,17 @@ checksum = "3d5b73a86ea60eb70c297075a3fe09690a014742e5e500437908870818a3f10e"
 
 [[package]]
 name = "noise-functions"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8adecac26cbe228825970296070e168fa460032a67500245c3b4e3c221cb9f1"
+checksum = "a6bf4668ddcf54ab3ac927f75936dff91094a810230a9166fffa69c3500c0678"
 
 [[package]]
 name = "noise-functions-config"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa34a30d3534a44406a308799890e01bedcd5e40e7e3d9ded57067b0a46db6b7"
+checksum = "9d22aa457912e5e501606b0097e3e8b38d40c8ab3e945eb2ec5963a3175b8356"
 dependencies = [
- "noise-functions 0.3.0",
+ "noise-functions 0.4.0",
 ]
 
 [[package]]
