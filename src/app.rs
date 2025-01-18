@@ -92,12 +92,6 @@ const DEFAULT_SETTINGS: Settings = Settings {
     link_tile_size_to_frequency: true,
 };
 
-#[cfg(debug_assertions)]
-const VERSION: &str = concat!("v", env!("CARGO_PKG_VERSION"), " (debug)");
-
-#[cfg(not(debug_assertions))]
-const VERSION: &str = concat!("v", env!("CARGO_PKG_VERSION"));
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Dimension {
     D2,
@@ -671,7 +665,12 @@ impl App {
             if !self.sample_success {
                 let image_rect = egui::Rect::from_min_size(image.rect.left_top(), size);
 
-                let text = "dimension/tileable not available for this noise type";
+                let text =
+                    if self.settings.config.tileable && self.settings.dimension != Dimension::D2 {
+                        "tileable is only available in 2D"
+                    } else {
+                        "dimension/tileable not available for this noise type"
+                    };
 
                 let galley = ui.painter().layout_job(egui::text::LayoutJob {
                     sections: vec![egui::text::LayoutSection {
@@ -781,7 +780,18 @@ impl eframe::App for App {
                 stroke: egui::epaint::Stroke::NONE,
             })
             .show(ctx, |ui| {
-                ui.add(egui::Label::new(VERSION).selectable(false));
+                let noise_functions_version = "0.6.0";
+                let version = env!("CARGO_PKG_VERSION");
+                let debug = if cfg!(debug_assertions) {
+                    " (debug)"
+                } else {
+                    ""
+                };
+
+                let label =
+                    format!("v{version}{debug} (noise-functions v{noise_functions_version})");
+
+                ui.add(egui::Label::new(label).selectable(false));
             });
     }
 }
