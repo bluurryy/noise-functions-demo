@@ -52,7 +52,7 @@ impl Cache {
 }
 
 const DEFAULT_CONFIG: Config = Config {
-    noise: Noise::Perlin,
+    noise: Noise::OpenSimplex2,
     seed: 0,
     frequency: 3.0,
 
@@ -68,7 +68,7 @@ const DEFAULT_CONFIG: Config = Config {
     weighted_strength: 0.0,
 
     // open simplex 2
-    improve: Improve::Xy,
+    improve: Improve::None,
 
     // cell
     jitter: 1.0,
@@ -196,9 +196,7 @@ impl App {
                     },
                 );
 
-                if matches!(config.noise, Noise::OpenSimplex2 | Noise::OpenSimplex2s)
-                    && matches!(dimension, Dimension::D3)
-                {
+                if matches!(config.noise, Noise::OpenSimplex2 | Noise::OpenSimplex2s) {
                     setting(
                         changed,
                         ui,
@@ -780,7 +778,7 @@ impl eframe::App for App {
                 stroke: egui::epaint::Stroke::NONE,
             })
             .show(ctx, |ui| {
-                let noise_functions_version = "0.6.0";
+                let noise_functions_version = "0.7.0";
                 let version = env!("CARGO_PKG_VERSION");
                 let debug = if cfg!(debug_assertions) {
                     " (debug)"

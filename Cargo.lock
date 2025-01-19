@@ -1001,22 +1001,22 @@ checksum = "3d5b73a86ea60eb70c297075a3fe09690a014742e5e500437908870818a3f10e"
 
 [[package]]
 name = "noise-functions"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e05984736fb8fc01a4e8ddf76af2282e5fa15b6deffa6c7ee002b911b4aee05d"
+checksum = "0faaecaad6662e9fe1796ced1b042a3db5278fb7780bf53b4cc5e059b7204c99"
 
 [[package]]
 name = "noise-functions-config"
-version = "0.8.0"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d985ffbd97e27a45a7377a245772f4090037cb9eaf1c3053ab324e2bb1578d80"
+checksum = "d32d213c3fec7a70fbffce0528de442375de11ef6425b854b48d2370593ab27d"
 dependencies = [
- "noise-functions 0.6.0",
+ "noise-functions 0.7.0",
 ]
 
 [[package]]
 name = "noise-functions-demo"
-version = "1.3.0"
+version = "1.4.0"
 dependencies = [
  "ahash",
  "eframe",
