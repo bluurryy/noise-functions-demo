@@ -2,6 +2,7 @@
 name = "noise-functions-demo"
 version = "1.4.0"
 edition = "2021"
+publish = false
 
 [workspace]
 members = ["generate-icons"]
