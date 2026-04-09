@@ -3,7 +3,7 @@ use std::hash::Hash;
 use web_time::{Duration, Instant};
 
 use eframe::egui;
-use noise_functions_config::{noise_functions::Noise as _, Config, Improve, Modifier, Noise};
+use noise_functions_config::{Config, Improve, Modifier, Noise, noise_functions::Noise as _};
 
 pub struct App {
     settings: Settings,
@@ -776,7 +776,7 @@ impl eframe::App for App {
                 stroke: egui::epaint::Stroke::NONE,
             })
             .show(ctx, |ui| {
-                let noise_functions_version = "0.7.0";
+                let noise_functions_version = "0.8.4";
                 let version = env!("CARGO_PKG_VERSION");
                 let debug = if cfg!(debug_assertions) {
                     " (debug)"
