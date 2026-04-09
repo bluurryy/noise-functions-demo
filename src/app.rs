@@ -771,7 +771,7 @@ impl eframe::App for App {
                 fill: egui::Color32::TRANSPARENT,
                 stroke: egui::epaint::Stroke::NONE,
             })
-            .show(ctx, |ui| {
+            .show(ui.ctx(), |ui| {
                 let noise_functions_version = "0.8.4";
                 let version = env!("CARGO_PKG_VERSION");
                 let debug = if cfg!(debug_assertions) {
