@@ -615,6 +615,7 @@ impl App {
             texture.set(
                 egui::ColorImage {
                     size: [settings.texture_size; 2],
+                    source_size: egui::Vec2::splat(settings.texture_size as f32),
                     pixels: cache.pixels.clone(),
                 },
                 egui::TextureOptions::NEAREST,
@@ -717,6 +718,10 @@ pub fn is_mobile(ctx: &egui::Context) -> bool {
 const COMBO_BOX_WIDTH: f32 = 150.0;
 
 impl eframe::App for App {
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+        _ = (ui, frame);
+    }
+
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         let is_mobile = is_mobile(ctx);
 
@@ -768,9 +773,9 @@ impl eframe::App for App {
             .auto_sized()
             .title_bar(false)
             .frame(egui::Frame {
-                inner_margin: egui::Margin::same(2.0),
+                inner_margin: egui::Margin::same(2),
                 outer_margin: egui::Margin::ZERO,
-                rounding: egui::Rounding::ZERO,
+                corner_radius: egui::CornerRadius::ZERO,
                 shadow: egui::epaint::Shadow::NONE,
                 fill: egui::Color32::TRANSPARENT,
                 stroke: egui::epaint::Stroke::NONE,
@@ -895,7 +900,7 @@ impl<T: PartialEq> egui::Widget for Reset<'_, T> {
 
         if response.clicked() {
             *value = default;
-            response.changed = true;
+            response.mark_changed();
         }
 
         response
