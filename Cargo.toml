@@ -13,7 +13,7 @@ eframe = { version = "0.29.1", default-features = false, features = [
   "glow",
 ] }
 log = "0.4"
-noise-functions-config = { version = "0.9.0", features = ["nightly-simd"] }
+noise-functions-config = { version = "0.10.1", features = ["nightly-simd"] }
 web-time = "1.1.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

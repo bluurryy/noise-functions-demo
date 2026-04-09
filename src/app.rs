@@ -3,7 +3,7 @@ use std::hash::Hash;
 use web_time::{Duration, Instant};
 
 use eframe::egui;
-use noise_functions_config::{Config, Improve, Modifier, Noise};
+use noise_functions_config::{noise_functions::Noise as _, Config, Improve, Modifier, Noise};
 
 pub struct App {
     settings: Settings,
@@ -538,9 +538,7 @@ impl App {
                 match settings.dimension {
                     Dimension::D2 => {
                         if let Some(sampler) = settings.config.sampler2a() {
-                            sample(&mut cache.values, settings, |x, y| {
-                                sampler.sample([x, y].into())
-                            });
+                            sample(&mut cache.values, settings, |x, y| sampler.sample2a([x, y]));
                             true
                         } else {
                             false
@@ -549,7 +547,7 @@ impl App {
                     Dimension::D3 => {
                         if let Some(sampler) = settings.config.sampler3a() {
                             sample(&mut cache.values, settings, |x, y| {
-                                sampler.sample([x, y, z, 0.0].into())
+                                sampler.sample3a([x, y, z, 0.0])
                             });
                             true
                         } else {
@@ -559,7 +557,7 @@ impl App {
                     Dimension::D4 => {
                         if let Some(sampler) = settings.config.sampler4a() {
                             sample(&mut cache.values, settings, |x, y| {
-                                sampler.sample([x, y, z, w].into())
+                                sampler.sample4a([x, y, z, w])
                             });
                             true
                         } else {
@@ -571,7 +569,7 @@ impl App {
                 match settings.dimension {
                     Dimension::D2 => {
                         if let Some(sampler) = settings.config.sampler2() {
-                            sample(&mut cache.values, settings, |x, y| sampler.sample([x, y]));
+                            sample(&mut cache.values, settings, |x, y| sampler.sample2([x, y]));
                             true
                         } else {
                             false
@@ -580,7 +578,7 @@ impl App {
                     Dimension::D3 => {
                         if let Some(sampler) = settings.config.sampler3() {
                             sample(&mut cache.values, settings, |x, y| {
-                                sampler.sample([x, y, z])
+                                sampler.sample3([x, y, z])
                             });
                             true
                         } else {
@@ -590,7 +588,7 @@ impl App {
                     Dimension::D4 => {
                         if let Some(sampler) = settings.config.sampler4() {
                             sample(&mut cache.values, settings, |x, y| {
-                                sampler.sample([x, y, z, w])
+                                sampler.sample4([x, y, z, w])
                             });
                             true
                         } else {
