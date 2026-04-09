@@ -3,7 +3,11 @@ name = "noise-functions-demo"
 version = "1.4.0"
 edition = "2021"
 
+[workspace]
+members = ["generate-icons"]
+
 [dependencies]
+ahash = { version = "0.8.11", default-features = false }  # just fixing something
 eframe = { version = "0.29.1", default-features = false, features = [
   "default_fonts",
   "glow",
@@ -11,7 +15,6 @@ eframe = { version = "0.29.1", default-features = false, features = [
 log = "0.4"
 noise-functions-config = { version = "0.9.0", features = ["nightly-simd"] }
 web-time = "1.1.0"
-ahash = { version = "0.8.11", default-features = false } # just fixing something
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 env_logger = "0.11.3"
@@ -19,14 +22,8 @@ env_logger = "0.11.3"
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures = "0.4"
 
-[profile.release]
-opt-level = 2
-
 [profile.dev.package."*"]
 opt-level = 2
 
-[workspace]
-members = ["generate-icons"]
-
-# [patch.crates-io]
-# noise-functions-config = { path = "../noise-functions/crates/noise-functions-config" }
+[profile.release]
+opt-level = 2
