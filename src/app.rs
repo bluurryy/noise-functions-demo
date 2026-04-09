@@ -615,6 +615,7 @@ impl App {
             texture.set(
                 egui::ColorImage {
                     size: [settings.texture_size; 2],
+                    source_size: egui::Vec2::splat(settings.texture_size as f32),
                     pixels: cache.pixels.clone(),
                 },
                 egui::TextureOptions::NEAREST,
@@ -709,21 +710,16 @@ impl App {
     }
 }
 
-pub fn is_mobile(ctx: &egui::Context) -> bool {
-    let screen_size = ctx.screen_rect().size();
-    screen_size.x < 550.0
-}
-
 const COMBO_BOX_WIDTH: f32 = 150.0;
 
 impl eframe::App for App {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        let is_mobile = is_mobile(ctx);
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+        let is_mobile = ui.viewport_rect().size().x < 555.0;
 
-        egui::SidePanel::left("settings_panel")
+        egui::Panel::left("settings_panel")
             .resizable(false)
-            .max_width(325.0)
-            .show(ctx, |ui| {
+            .max_size(325.0)
+            .show_inside(ui, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     ui.add_space(6.0);
                     self.settings_panel_contents(ui, frame);
@@ -740,7 +736,7 @@ impl eframe::App for App {
                 });
             });
 
-        egui::CentralPanel::default().show(ctx, |ui| {
+        egui::CentralPanel::default().show_inside(ui, |ui| {
             if !is_mobile {
                 const TOP_LEFT_JUSTIFIED: egui::Layout = egui::Layout {
                     main_dir: egui::Direction::TopDown,
@@ -768,14 +764,14 @@ impl eframe::App for App {
             .auto_sized()
             .title_bar(false)
             .frame(egui::Frame {
-                inner_margin: egui::Margin::same(2.0),
+                inner_margin: egui::Margin::same(2),
                 outer_margin: egui::Margin::ZERO,
-                rounding: egui::Rounding::ZERO,
+                corner_radius: egui::CornerRadius::ZERO,
                 shadow: egui::epaint::Shadow::NONE,
                 fill: egui::Color32::TRANSPARENT,
                 stroke: egui::epaint::Stroke::NONE,
             })
-            .show(ctx, |ui| {
+            .show(ui.ctx(), |ui| {
                 let noise_functions_version = "0.8.4";
                 let version = env!("CARGO_PKG_VERSION");
                 let debug = if cfg!(debug_assertions) {
@@ -895,7 +891,7 @@ impl<T: PartialEq> egui::Widget for Reset<'_, T> {
 
         if response.clicked() {
             *value = default;
-            response.changed = true;
+            response.mark_changed();
         }
 
         response
