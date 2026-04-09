@@ -710,25 +710,16 @@ impl App {
     }
 }
 
-pub fn is_mobile(ctx: &egui::Context) -> bool {
-    let screen_size = ctx.screen_rect().size();
-    screen_size.x < 550.0
-}
-
 const COMBO_BOX_WIDTH: f32 = 150.0;
 
 impl eframe::App for App {
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
-        _ = (ui, frame);
-    }
+        let is_mobile = ui.viewport_rect().size().x < 555.0;
 
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        let is_mobile = is_mobile(ctx);
-
-        egui::SidePanel::left("settings_panel")
+        egui::Panel::left("settings_panel")
             .resizable(false)
-            .max_width(325.0)
-            .show(ctx, |ui| {
+            .max_size(325.0)
+            .show_inside(ui, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     ui.add_space(6.0);
                     self.settings_panel_contents(ui, frame);
@@ -745,7 +736,7 @@ impl eframe::App for App {
                 });
             });
 
-        egui::CentralPanel::default().show(ctx, |ui| {
+        egui::CentralPanel::default().show_inside(ui, |ui| {
             if !is_mobile {
                 const TOP_LEFT_JUSTIFIED: egui::Layout = egui::Layout {
                     main_dir: egui::Direction::TopDown,
